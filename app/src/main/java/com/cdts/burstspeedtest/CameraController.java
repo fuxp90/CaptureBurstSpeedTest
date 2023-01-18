@@ -4,12 +4,15 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
+import android.graphics.Paint;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -129,6 +132,9 @@ public class CameraController {
         try {
             CameraCharacteristics characteristics = mManager.getCameraCharacteristics(id);
             StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+
+            int timestamp_source = characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
+            Log.e(TAG, "timestamp_source: " + timestamp_source);
             Size[] sizes = configurationMap.getOutputSizes(ImageFormat.JPEG);
             Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
             Log.d(TAG, id + " getJpegSupportSize: " + Arrays.toString(sizes));
@@ -146,7 +152,10 @@ public class CameraController {
             try {
                 CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
                 builder.addTarget(mJpegSurface);
-                builder.setTag(mCaptureSolution.mCaptureSendNumber);
+                int send = mCaptureSolution == CaptureSolution.CaptureBurst
+                    ? mCaptureSolution.mCaptureSendNumber - CaptureSolution.mBurstNumber
+                    : mCaptureSolution.mCaptureSendNumber;
+                builder.setTag(send + i);
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                 requestList.add(builder.build());
             } catch (CameraAccessException e) {
@@ -162,6 +171,21 @@ public class CameraController {
         checkTestEndCondition();
     }
 
+
+    CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
+            int sendNum = (int) request.getTag();
+            Log.d(TAG, "onCaptureStarted sendNum " + sendNum + " timestamp:" + timestamp);
+        }
+
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+            int sendNum = (int) request.getTag();
+            Log.d(TAG, "onCaptureCompleted sendNum " + sendNum + " timestamp:" + result.get(CaptureResult.SENSOR_TIMESTAMP));
+        }
+    };
+
     public void startJpegBurstTest(CaptureSolution solution) {
         Log.e(TAG, "startJpegBurstTest: " + solution);
         mCaptureSolution = solution;
@@ -172,15 +196,15 @@ public class CameraController {
             try {
                 switch (solution) {
                     case CaptureOneByOne:
-                        mCameraSession.capture(buildRequest(1).get(0), null, mHandler);
+                        mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
                         solution.addRequestNumber(1);
                         break;
                     case CaptureRepeating:
-                        mCameraSession.setRepeatingRequest(buildRequest(1).get(0), null, mHandler);
+                        mCameraSession.setRepeatingRequest(buildRequest(1).get(0), mCaptureCallback, mHandler);
                         break;
                     case CaptureBurst:
                         solution.addRequestNumber(solution.getBurstNumber());
-                        mCameraSession.captureBurst(buildRequest(solution.getBurstNumber()), null, mHandler);
+                        mCameraSession.captureBurst(buildRequest(solution.getBurstNumber()), mCaptureCallback, mHandler);
                         break;
                 }
                 solution.startRecordTime();
@@ -195,6 +219,8 @@ public class CameraController {
         try {
             Image image = reader.acquireNextImage();
             if (image != null) {
+                long timestamp = image.getTimestamp();
+                Log.d(TAG, "ImageReceived " + mCaptureSolution.mImageReceivedNumber + " timestamp:" + timestamp);
                 if (mCaptureSolution != null) {
                     mCaptureSolution.addReceivedNumber(image);
                 }
@@ -213,7 +239,7 @@ public class CameraController {
         switch (mCaptureSolution) {
             case CaptureOneByOne:
                 try {
-                    mCameraSession.capture(buildRequest(1).get(0), null, mHandler);
+                    mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
                     mCaptureSolution.addRequestNumber(1);
                 } catch (CameraAccessException e) {
                     e.printStackTrace();
@@ -222,7 +248,7 @@ public class CameraController {
             case CaptureBurst:
                 if (mCaptureSolution.isComplete()) {
                     try {
-                        mCameraSession.captureBurst(buildRequest(mCaptureSolution.getBurstNumber()), null, mHandler);
+                        mCameraSession.captureBurst(buildRequest(mCaptureSolution.getBurstNumber()), mCaptureCallback, mHandler);
                         mCaptureSolution.addRequestNumber(mCaptureSolution.getBurstNumber());
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
