@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginLeft="10dp"
+    android:layout_marginRight="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/listen_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:text="@string/listened_count"
+            android:textSize="@dimen/text_size_15" />
+
+        <TextView
+            android:id="@+id/listen_first_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:text="@string/first_listened_time"
+            android:textColor="#9C27B0"
+            android:textSize="@dimen/text_size_15" />
+
+        <TextView
+            android:id="@+id/listen_gap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:text="@string/time_gap"
+            android:textColor="#2196F3"
+            android:textSize="@dimen/text_size_15" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="#08000000"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:text="@string/time_sync_desc"
+            android:textSize="@dimen/text_size_15" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/start_time_record"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/time_sync_finish"
+        android:layout_marginBottom="30dp"
+        android:text="@string/start_time_record"
+        android:textSize="25sp" />
+
+    <Button
+        android:id="@+id/time_sync_finish"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="30dp"
+        android:text="@string/time_sync_confirmed"
+        android:textSize="25sp" />
+
+</RelativeLayout>

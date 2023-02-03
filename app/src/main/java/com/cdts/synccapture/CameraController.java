@@ -75,8 +75,7 @@ public class CameraController {
         synchronized void addReceivedNumber(Image image) {
             mImageReceivedNumber++;
             mCameraCallback.onReceiveImage(mImageReceivedNumber);
-            Log.d(TAG, "addReceivedNumber " + mImageReceivedNumber + ","
-                + image.getWidth() + "x" + image.getWidth() + ",format:" + image.getFormat());
+            Log.d(TAG, "addReceivedNumber " + mImageReceivedNumber + "," + image.getWidth() + "x" + image.getWidth() + ",format:" + image.getFormat());
         }
 
         synchronized void startRecordTime() {
@@ -139,28 +138,17 @@ public class CameraController {
         return isTestRunning;
     }
 
-    public List<Size> getJpegSupportSize(String id) {
+    public List<Size> getImageSupportSize(String id) {
         try {
             CameraCharacteristics characteristics = mManager.getCameraCharacteristics(id);
             StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
 
+
             int timestamp_source = characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
             Log.e(TAG, "timestamp_source: " + timestamp_source);
-            Size[] sizes = configurationMap.getOutputSizes(ImageFormat.JPEG);
+            Size[] sizes = configurationMap.getOutputSizes(mCaptureFormat);
             Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " getJpegSupportSize: " + Arrays.toString(sizes));
-
-            Size[] rawSize = configurationMap.getOutputSizes(ImageFormat.RAW_PRIVATE);
-            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " RAW_PRIVATE: " + Arrays.toString(rawSize));
-
-            rawSize = configurationMap.getOutputSizes(ImageFormat.RAW_SENSOR);
-            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " RAW_SENSOR: " + Arrays.toString(rawSize));
-
-            rawSize = configurationMap.getOutputSizes(ImageFormat.RAW10);
-            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " RAW10: " + Arrays.toString(rawSize));
+            Log.d(TAG, id + " " + getFmt() + " : " + Arrays.toString(sizes));
 
             return Arrays.asList(sizes);
         } catch (CameraAccessException e) {
@@ -176,9 +164,7 @@ public class CameraController {
             try {
                 CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
                 builder.addTarget(mJpegSurface);
-                int send = mCaptureSolution == CaptureSolution.CaptureBurst
-                    ? mCaptureSolution.mCaptureSendNumber - CaptureSolution.mBurstNumber
-                    : mCaptureSolution.mCaptureSendNumber;
+                int send = mCaptureSolution == CaptureSolution.CaptureBurst ? mCaptureSolution.mCaptureSendNumber - CaptureSolution.mBurstNumber : mCaptureSolution.mCaptureSendNumber;
                 builder.setTag(send + i);
                 builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(30, 30));
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
@@ -190,7 +176,7 @@ public class CameraController {
         return requestList;
     }
 
-    public void stopJpegBurstTest() {
+    public void stopImageBurstTest() {
         Log.e(TAG, "stopJpegBurstTest");
         isTestRunning = false;
         checkTestEndCondition();
@@ -212,7 +198,7 @@ public class CameraController {
         }
     };
 
-    public void startJpegBurstTest(CaptureSolution solution) {
+    public void startImageBurstTest(CaptureSolution solution) {
         Log.e(TAG, "startJpegBurstTest: " + solution);
         mCaptureSolution = solution;
         isTestRunning = true;
@@ -400,5 +386,17 @@ public class CameraController {
         }
     }
 
+    public String getFmt() {
+        int fmt = mCaptureFormat;
+        switch (fmt) {
+            case ImageFormat.JPEG:
+                return "JPEG";
+            case ImageFormat.RAW10:
+                return "RAW10";
+            case ImageFormat.RAW_SENSOR:
+                return "RAW_SENSOR";
+        }
+        return "";
+    }
 
 }

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="true"
@@ -25,6 +26,10 @@
         </activity>
         <activity
             android:name=".SpeedTestActivity"
+            android:exported="true"
+            android:launchMode="singleTop" />
+        <activity
+            android:name=".TimeSyncActivity"
             android:exported="true"
             android:launchMode="singleTop" />
     </application>

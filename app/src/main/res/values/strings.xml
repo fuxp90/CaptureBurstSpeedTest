@@ -14,6 +14,7 @@
     <string name="test_stop">Stop Test</string>
     <string name="test_choose_solution">Choose solution</string>
     <string name="test_solution_changed">Solution Changed,Re-test again</string>
+    <string name="test_fmt_changed">Please stop test first</string>
     <string name="test_sendRequest_unknow">Send Request:-</string>
     <string name="test_receivedImage_unknow">Received Image:-</string>
     <string name="test_result_unknow">Speed(fps):-</string>
@@ -21,6 +22,23 @@
     <string name="test_fmt_jpeg">JPEG</string>
     <string name="test_fmt_raw_sensor">RAW SENSOR</string>
     <string name="test_fmt_raw_10">RAW10</string>
+
+    <string name="start_time_record">Start Time Record</string>
+    <string name="stop_time_record">Stop Time Record</string>
+    <string name="listened_count">Listened count:%d</string>
+    <string name="first_listened_time">BaseTime(FirstListened):\n%d</string>
+    <string name="time_gap">Time Gap(CurrentTime-BaseTime):</string>
+    <string name="test_audio_time_sync">AudioTimeSyncTest</string>
+    <string name="time_sync_desc">Time sync desc:\nWe use the first sound time as the BaseTime,
+        and subtract the BaseTime from the sound time we listen to later. Please ensure that the TimeGap
+        of different devices is less than a reasonable threshold (for example, 1 millisecond).</string>
+    <string name="time_sync_confirmed">Time Sync Confirmed</string>
+    <string name="base_time_error">BaseTime Error</string>
+    <string name="need_listened_count_more">Need to listen more times</string>
+    <string name="start_capture">Start Capture</string>
+    <string name="base_time">BaseTime:%d</string>
+    <string name="capture_number">CaptureNumber:%d</string>
+    <string name="stop_capture">Stop Capture</string>
 
     <string-array name="test_solution">
         <item>Solution Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>

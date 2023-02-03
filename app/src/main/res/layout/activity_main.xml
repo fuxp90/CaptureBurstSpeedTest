@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="5dp"
-    tools:context=".SpeedTestActivity">
+    android:layout_margin="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,85 +10,25 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/test_size"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical"
-            android:text="@string/test_image_size"
-            android:textSize="@dimen/text_size" />
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <TextView
-                android:id="@+id/test_solution"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:gravity="center_vertical"
-                android:text="@string/test_solution"
-                android:textSize="@dimen/text_size" />
-
-            <ImageView
-                android:id="@+id/test_solution_select"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:src="@drawable/ic_baseline_chevron_right_24" />
-        </RelativeLayout>
-
-        <TextView
-            android:id="@+id/test_time"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical"
-            android:text="@string/test_time"
-            android:textSize="@dimen/text_size" />
-
-        <TextView
-            android:id="@+id/test_send"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical"
-            android:text="@string/test_sendRequest"
-            android:textSize="@dimen/text_size" />
-
-        <TextView
-            android:id="@+id/test_receive"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical"
-            android:text="@string/test_receivedImage"
-            android:textSize="@dimen/text_size" />
-
-        <TextView
-            android:id="@+id/test_result"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:gravity="center_vertical"
-            android:text="@string/test_result"
-            android:textSize="@dimen/text_size" />
-
-        <TextView
-            android:id="@+id/test_solution_detail"
+            android:id="@+id/baseTime"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#08000000"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp" />
+            android:text="@string/base_time" />
+
+        <TextView
+            android:id="@+id/capture_number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/capture_number" />
+
     </LinearLayout>
 
-
     <Button
-        android:id="@+id/test_button"
+        android:id="@+id/start_capture"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="30dp"
-        android:enabled="false"
-        android:text="@string/test_start"
-        android:textSize="25sp" />
+        android:text="@string/start_capture" />
 
 </RelativeLayout>

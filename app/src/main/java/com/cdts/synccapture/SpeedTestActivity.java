@@ -37,13 +37,13 @@ public class SpeedTestActivity extends AppCompatActivity {
     private TextView mTestSpeed;
     private TextView mTestSolutionDetail;
 
-    private CameraController.CaptureSolution mCaptureSolution = CameraController.CaptureSolution.CaptureOneByOne;
+    private CameraController.CaptureSolution mCaptureSolution = CameraController.CaptureSolution.CaptureRepeating;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_speed_test);
 
         mTestReceive = findViewById(R.id.test_receive);
         mTestSpeed = findViewById(R.id.test_result);
@@ -57,9 +57,9 @@ public class SpeedTestActivity extends AppCompatActivity {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
             builder.setTitle(R.string.test_choose_solution);
             final CharSequence[] charSequence = new CharSequence[]{
-                CameraController.CaptureSolution.CaptureOneByOne.name(),
-                CameraController.CaptureSolution.CaptureBurst.name(),
-                CameraController.CaptureSolution.CaptureRepeating.name(),};
+                    CameraController.CaptureSolution.CaptureOneByOne.name(),
+                    CameraController.CaptureSolution.CaptureBurst.name(),
+                    CameraController.CaptureSolution.CaptureRepeating.name(),};
 
             int item = 0;
             for (int i = 0; i < charSequence.length; i++) {
@@ -85,10 +85,10 @@ public class SpeedTestActivity extends AppCompatActivity {
         mButton.setOnClickListener(v -> {
             if (!mCameraController.isTestRunning()) {
                 mButton.setText(R.string.test_stop);
-                mCameraController.startJpegBurstTest(mCaptureSolution);
+                mCameraController.startImageBurstTest(mCaptureSolution);
             } else {
                 mButton.setText(R.string.test_start);
-                mCameraController.stopJpegBurstTest();
+                mCameraController.stopImageBurstTest();
             }
         });
         mTestSolution.setText(getString(R.string.test_solution, mCaptureSolution));
@@ -156,6 +156,10 @@ public class SpeedTestActivity extends AppCompatActivity {
     @SuppressLint("NonConstantResourceId")
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (mCameraController.isTestRunning()) {
+            Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
+            return true;
+        }
         switch (item.getItemId()) {
             case R.id.fmt_jpeg:
                 mCameraController.setImageFormat(ImageFormat.JPEG);
@@ -184,24 +188,11 @@ public class SpeedTestActivity extends AppCompatActivity {
 
     @SuppressLint("SetTextI18n")
     Size updateSize() {
-        List<Size> sizes = mCameraController.getJpegSupportSize(mCamId);
+        List<Size> sizes = mCameraController.getImageSupportSize(mCamId);
         Size size = sizes.get(0);
         mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight())
-            + "(" + getFmt() + ")");
+                + "(" + mCameraController.getFmt() + ")");
         return size;
-    }
-
-    String getFmt() {
-        int fmt = mCameraController.getCaptureFormat();
-        switch (fmt) {
-            case ImageFormat.JPEG:
-                return "JPEG";
-            case ImageFormat.RAW10:
-                return "RAW10";
-            case ImageFormat.RAW_SENSOR:
-                return "RAW_SENSOR";
-        }
-        return "";
     }
 
     class TimeUpdateRunnable implements Runnable {
