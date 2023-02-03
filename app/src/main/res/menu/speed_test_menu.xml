@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/fmt_jpeg"
+        android:title="@string/test_fmt_jpeg" />
+
+    <item
+        android:id="@+id/fmt_raw_10"
+        android:title="@string/test_fmt_raw_10" />
+
+    <item
+        android:id="@+id/fmt_raw_sensor"
+        android:title="@string/test_fmt_raw_sensor" />
+</menu>

@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace 'com.cdts.burstspeedtest'
-    compileSdk 32
+    namespace 'com.cdts.synccapture'
+    compileSdk 33
 
     defaultConfig {
-        applicationId "com.cdts.burstspeedtest"
+        applicationId "com.cdts.synccapture"
         minSdk 26
-        targetSdk 32
+        targetSdk 33
         versionCode 1
-        versionName "1.0"
+        versionName getBuildDate()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,6 +26,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+static def getBuildDate() {
+    return new Date().format("yyyy-mm-dd HH:MM:ss") + " rev:" + getGitVersion();
+}
+
+static def getGitVersion() {
+    return 'git rev-parse --short HEAD'.execute().text.trim()
 }
 
 dependencies {

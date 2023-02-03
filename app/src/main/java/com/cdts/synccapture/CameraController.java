@@ -1,10 +1,9 @@
-package com.cdts.burstspeedtest;
+package com.cdts.synccapture;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
-import android.graphics.Paint;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -19,11 +18,11 @@ import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +43,16 @@ public class CameraController {
     private boolean isTestRunning;
     private static final String TAG = "CameraController";
     private ImageReader mImageReader;
+    private int mCaptureFormat = ImageFormat.RAW10;
+
+    public void setImageFormat(int fmt) {
+        mCaptureFormat = fmt;
+        Log.d(TAG, "setImageFormat: " + fmt);
+    }
+
+    public int getCaptureFormat() {
+        return mCaptureFormat;
+    }
 
     public enum CaptureSolution {
         CaptureOneByOne(), CaptureRepeating(), CaptureBurst();
@@ -103,6 +112,8 @@ public class CameraController {
     public interface CameraCallback {
         void onCameraOpened(CameraDevice cameraDevice);
 
+        void onCameraClosed();
+
         void onConfigured(CameraCaptureSession session);
 
         void onTestStart(CaptureSolution captureSolution, long time);
@@ -138,6 +149,19 @@ public class CameraController {
             Size[] sizes = configurationMap.getOutputSizes(ImageFormat.JPEG);
             Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
             Log.d(TAG, id + " getJpegSupportSize: " + Arrays.toString(sizes));
+
+            Size[] rawSize = configurationMap.getOutputSizes(ImageFormat.RAW_PRIVATE);
+            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
+            Log.d(TAG, id + " RAW_PRIVATE: " + Arrays.toString(rawSize));
+
+            rawSize = configurationMap.getOutputSizes(ImageFormat.RAW_SENSOR);
+            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
+            Log.d(TAG, id + " RAW_SENSOR: " + Arrays.toString(rawSize));
+
+            rawSize = configurationMap.getOutputSizes(ImageFormat.RAW10);
+            Arrays.sort(rawSize, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
+            Log.d(TAG, id + " RAW10: " + Arrays.toString(rawSize));
+
             return Arrays.asList(sizes);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -156,6 +180,7 @@ public class CameraController {
                     ? mCaptureSolution.mCaptureSendNumber - CaptureSolution.mBurstNumber
                     : mCaptureSolution.mCaptureSendNumber;
                 builder.setTag(send + i);
+                builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(30, 30));
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                 requestList.add(builder.build());
             } catch (CameraAccessException e) {
@@ -178,6 +203,7 @@ public class CameraController {
             int sendNum = (int) request.getTag();
             Log.d(TAG, "onCaptureStarted sendNum " + sendNum + " timestamp:" + timestamp);
         }
+
 
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
@@ -283,7 +309,6 @@ public class CameraController {
         } else {
             return false;
         }
-
     }
 
     public void setCameraCallback(CameraCallback cameraCallback) {
@@ -292,12 +317,12 @@ public class CameraController {
     }
 
     public void openCamera(String id, Size size) {
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+        if (mContext.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         try {
 
-            mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.JPEG, 30);
+            mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), mCaptureFormat, 30);
             mImageReader.setOnImageAvailableListener(this::onImageReceived, mHandler);
             final Surface surface = mImageReader.getSurface();
             mJpegSurface = surface;
@@ -349,7 +374,7 @@ public class CameraController {
     }
 
 
-    public void closeCamera() {
+    public void closeCamera(boolean callback) {
         Log.e(TAG, "closeCamera: ");
         try {
             if (mCameraSession != null) {
@@ -365,6 +390,10 @@ public class CameraController {
 
             if (mJpegSurface != null) {
                 mJpegSurface.release();
+            }
+
+            if (mCameraCallback != null && callback) {
+                mCameraCallback.onCameraClosed();
             }
         } catch (Exception e) {
             e.printStackTrace();

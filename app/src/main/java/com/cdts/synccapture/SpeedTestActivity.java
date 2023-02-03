@@ -1,4 +1,4 @@
-package com.cdts.burstspeedtest;
+package com.cdts.synccapture;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -6,41 +6,39 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
 import android.util.Size;
-import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.function.Consumer;
 
-public class MainActivity extends AppCompatActivity {
+public class SpeedTestActivity extends AppCompatActivity {
 
-    CameraController mCameraController;
-    String mCamId = "0";
-    Button mButton;
-    TextView mTestSize;
-    TextView mTestSolution;
-    TextView mTestTime;
-    TextView mTestSend;
-    TextView mTestReceive;
-    TextView mTestSpeed;
-    TextView mTestSolutionDetail;
+    private CameraController mCameraController;
+    private final String mCamId = "0";
+    private Button mButton;
+    private TextView mTestSize;
+    private TextView mTestSolution;
+    private TextView mTestTime;
+    private TextView mTestSend;
+    private TextView mTestReceive;
+    private TextView mTestSpeed;
+    private TextView mTestSolutionDetail;
 
-    CameraController.CaptureSolution mCaptureSolution = CameraController.CaptureSolution.CaptureOneByOne;
-    Handler mHandler = new Handler(Looper.getMainLooper());
+    private CameraController.CaptureSolution mCaptureSolution = CameraController.CaptureSolution.CaptureOneByOne;
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         mTestSolutionDetail = findViewById(R.id.test_solution_detail);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
             builder.setTitle(R.string.test_choose_solution);
             final CharSequence[] charSequence = new CharSequence[]{
                 CameraController.CaptureSolution.CaptureOneByOne.name(),
@@ -103,6 +101,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onCameraClosed() {
+                openCamera();
+            }
+
+            @Override
             public void onConfigured(CameraCaptureSession session) {
                 runOnUiThread(() -> mButton.setEnabled(true));
             }
@@ -144,6 +147,31 @@ public class MainActivity extends AppCompatActivity {
         resetTestView();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.speed_test_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @SuppressLint("NonConstantResourceId")
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.fmt_jpeg:
+                mCameraController.setImageFormat(ImageFormat.JPEG);
+                break;
+            case R.id.fmt_raw_10:
+                mCameraController.setImageFormat(ImageFormat.RAW10);
+                break;
+            case R.id.fmt_raw_sensor:
+                mCameraController.setImageFormat(ImageFormat.RAW_SENSOR);
+                break;
+        }
+        updateSize();
+        mCameraController.closeCamera(true);
+        return super.onOptionsItemSelected(item);
+    }
+
     void resetTestView() {
         mTestSpeed.setText(R.string.test_result_unknow);
         mTestReceive.setText(R.string.test_receivedImage_unknow);
@@ -151,10 +179,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void openCamera() {
+        mCameraController.openCamera(mCamId, updateSize());
+    }
+
+    @SuppressLint("SetTextI18n")
+    Size updateSize() {
         List<Size> sizes = mCameraController.getJpegSupportSize(mCamId);
         Size size = sizes.get(0);
-        mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()));
-        mCameraController.openCamera(mCamId, size);
+        mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight())
+            + "(" + getFmt() + ")");
+        return size;
+    }
+
+    String getFmt() {
+        int fmt = mCameraController.getCaptureFormat();
+        switch (fmt) {
+            case ImageFormat.JPEG:
+                return "JPEG";
+            case ImageFormat.RAW10:
+                return "RAW10";
+            case ImageFormat.RAW_SENSOR:
+                return "RAW_SENSOR";
+        }
+        return "";
     }
 
     class TimeUpdateRunnable implements Runnable {
@@ -202,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (mCameraController != null) {
-            mCameraController.closeCamera();
+            mCameraController.closeCamera(false);
         }
     }
 }

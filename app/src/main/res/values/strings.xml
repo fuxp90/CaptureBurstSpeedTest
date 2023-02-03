@@ -1,5 +1,9 @@
 <resources>
-    <string name="app_name">BurstSpeedTest</string>
+    <string name="app_name">SyncCapture</string>
+    <string name="app_about">About</string>
+
+
+    <string name="test_capture_speed">CaptureSpeedTest</string>
     <string name="test_image_size">Image Size:%s</string>
     <string name="test_solution">Solution:%s</string>
     <string name="test_time">Test Time:</string>
@@ -14,9 +18,13 @@
     <string name="test_receivedImage_unknow">Received Image:-</string>
     <string name="test_result_unknow">Speed(fps):-</string>
 
+    <string name="test_fmt_jpeg">JPEG</string>
+    <string name="test_fmt_raw_sensor">RAW SENSOR</string>
+    <string name="test_fmt_raw_10">RAW10</string>
+
     <string-array name="test_solution">
-        <item>Solution Detail:\nSend a single request, waiting for HAL return the JPEG, then we do next capture</item>
-        <item>Solution Detail:\Send requests list(15) at once, waiting for HAL return all the JPEGs, then we do next capture</item>
-        <item>Solution Detail:\Send a single request as RepeatingRequest, HAL will continues return the JPEG until we stop it</item>
+        <item>Solution Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>
+        <item>Solution Detail:\Send requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
+        <item>Solution Detail:\Send a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
     </string-array>
 </resources>

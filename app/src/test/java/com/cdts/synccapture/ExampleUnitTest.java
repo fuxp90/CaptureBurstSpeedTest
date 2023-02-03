@@ -1,4 +1,4 @@
-package com.cdts.burstspeedtest;
+package com.cdts.synccapture;
 
 import org.junit.Test;
 
