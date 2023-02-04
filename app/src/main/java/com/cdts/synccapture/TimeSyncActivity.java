@@ -22,6 +22,7 @@ public class TimeSyncActivity extends AppCompatActivity {
     private Button mStartStopBtn;
     private TextView mListenedCount;
     private TextView mFirstListenedTime;
+    private TextView mCurrentListened;
     private TextView mTimeGap;
     private boolean isAudioRecording = false;
 
@@ -67,13 +68,14 @@ public class TimeSyncActivity extends AppCompatActivity {
                 mStartStopBtn.setText(R.string.start_time_record);
                 mAudioRecordController.stopRecording();
             } else {
-                mAudioRecordController.startRecording((index, timestamp) -> runOnUiThread(() -> {
+                mAudioRecordController.startRecording((index, timestamp, rateInHz, maxAmplitude) -> runOnUiThread(() -> {
                     long firstTime = mAudioRecordController.getFirstListenedTime();
                     mListenedCount.setText(getString(R.string.listened_count, index));
                     mFirstListenedTime.setText(getString(R.string.first_listened_time, firstTime));
                     long gap = timestamp - firstTime;
                     String stringBuilder = getString(R.string.time_gap) + "\nNanosecond:" + gap + "\nMicrosecond:" + new BigDecimal(String.valueOf(gap / 1000f)) + "\nMillisecond:" + new BigDecimal(String.valueOf(gap / 1000_000f));
                     mTimeGap.setText(stringBuilder);
+                    mCurrentListened.setText(getString(R.string.listen_current, timestamp + "", rateInHz + "", maxAmplitude + ""));
                 }));
                 mStartStopBtn.setText(R.string.stop_time_record);
             }
@@ -82,6 +84,8 @@ public class TimeSyncActivity extends AppCompatActivity {
         mListenedCount = findViewById(R.id.listen_count);
         mFirstListenedTime = findViewById(R.id.listen_first_time);
         mTimeGap = findViewById(R.id.listen_gap);
+        mCurrentListened = findViewById(R.id.listen_current);
+        mCurrentListened.setText(getString(R.string.listen_current, "-", "-", "-"));
 
         mAudioRecordController = new AudioRecordController(this);
 

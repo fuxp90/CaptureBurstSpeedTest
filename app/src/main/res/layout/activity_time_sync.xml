@@ -29,6 +29,16 @@
             android:textSize="@dimen/text_size_15" />
 
         <TextView
+            android:id="@+id/listen_current"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:text="@string/listen_current"
+            android:textColor="#009688"
+            android:textSize="@dimen/text_size_15" />
+
+
+        <TextView
             android:id="@+id/listen_gap"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

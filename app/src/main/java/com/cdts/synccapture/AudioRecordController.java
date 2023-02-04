@@ -77,7 +77,7 @@ public class AudioRecordController {
     private long mFirstListenedTime;
 
     public interface OnAudiListenedCallback {
-        void onListened(int index, long timestamp);
+        void onListened(int index, long timestamp, double rateInHz, int maxAmplitude);
     }
 
     public AudioRecordController(Context context) {
@@ -192,7 +192,7 @@ public class AudioRecordController {
                                     mFirstListenedTime = event_time;
                                 }
                                 if (mOnAudiListenedCallback != null) {
-                                    mOnAudiListenedCallback.onListened(++mListenedIndex, event_time);
+                                    mOnAudiListenedCallback.onListened(++mListenedIndex, event_time, rate, max);
                                 }
 
                             }//end  if(rate>189000.0 && rate<195000.0)
