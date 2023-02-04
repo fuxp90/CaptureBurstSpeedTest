@@ -46,6 +46,8 @@ public class TimeSyncActivity extends AppCompatActivity {
                     return;
                 }
 
+                mAudioRecordController.stopRecording();
+
                 long baseTime = mAudioRecordController.getFirstListenedTime();
                 Intent intent = new Intent();
                 intent.putExtra("base_time", baseTime);
@@ -92,6 +94,12 @@ public class TimeSyncActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, PERMISSION, 0xff);
         }
 
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mAudioRecordController.stopRecording();
     }
 
     boolean hasAudioPermission() {

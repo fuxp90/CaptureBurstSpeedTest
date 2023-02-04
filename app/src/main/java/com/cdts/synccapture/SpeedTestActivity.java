@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
+import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,7 +38,7 @@ public class SpeedTestActivity extends AppCompatActivity {
     private TextView mTestSpeed;
     private TextView mTestSolutionDetail;
 
-    private CameraController.CaptureSolution mCaptureSolution = CameraController.CaptureSolution.CaptureRepeating;
+    private CameraController.CaptureMode mCaptureSolution = CameraController.CaptureMode.CaptureRepeating;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -57,20 +58,20 @@ public class SpeedTestActivity extends AppCompatActivity {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
             builder.setTitle(R.string.test_choose_solution);
             final CharSequence[] charSequence = new CharSequence[]{
-                    CameraController.CaptureSolution.CaptureOneByOne.name(),
-                    CameraController.CaptureSolution.CaptureBurst.name(),
-                    CameraController.CaptureSolution.CaptureRepeating.name(),};
+                    CameraController.CaptureMode.CaptureOneByOne.name(),
+                    CameraController.CaptureMode.CaptureBurst.name(),
+                    CameraController.CaptureMode.CaptureRepeating.name(),};
 
             int item = 0;
             for (int i = 0; i < charSequence.length; i++) {
-                if (mCaptureSolution == CameraController.CaptureSolution.valueOf(charSequence[i] + "")) {
+                if (mCaptureSolution == CameraController.CaptureMode.valueOf(charSequence[i] + "")) {
                     item = i;
                     break;
                 }
             }
 
             builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
-                mCaptureSolution = CameraController.CaptureSolution.valueOf(charSequence[which].toString());
+                mCaptureSolution = CameraController.CaptureMode.valueOf(charSequence[which].toString());
                 mTestSolution.setText(getString(R.string.test_solution, mCaptureSolution));
                 mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_solution)[which]);
                 if (mCameraController.isTestRunning()) {
@@ -85,15 +86,15 @@ public class SpeedTestActivity extends AppCompatActivity {
         mButton.setOnClickListener(v -> {
             if (!mCameraController.isTestRunning()) {
                 mButton.setText(R.string.test_stop);
-                mCameraController.startImageBurstTest(mCaptureSolution);
+                mCameraController.startCaptureBurst(mCaptureSolution);
             } else {
                 mButton.setText(R.string.test_start);
-                mCameraController.stopImageBurstTest();
+                mCameraController.stopCaptureBurst();
             }
         });
         mTestSolution.setText(getString(R.string.test_solution, mCaptureSolution));
         mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_solution)[0]);
-        mCameraController = new CameraController(this);
+        mCameraController = ((CaptureApplication) getApplication()).getCameraController();
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
             public void onCameraOpened(CameraDevice cameraDevice) {
@@ -111,7 +112,7 @@ public class SpeedTestActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onTestStart(CameraController.CaptureSolution captureSolution, long start) {
+            public void onTestStart(CameraController.CaptureMode captureSolution, long start) {
                 runOnUiThread(() -> {
                     resetTestView();
                 });
@@ -119,10 +120,10 @@ public class SpeedTestActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onTestEnd(CameraController.CaptureSolution captureSolution) {
+            public void onTestEnd(CameraController.CaptureMode captureMode) {
                 runOnUiThread(() -> {
-                    long time = captureSolution.mEndTime - captureSolution.mStartTime;
-                    int total = captureSolution.mImageReceivedNumber;
+                    long time = captureMode.mEndTime - captureMode.mStartTime;
+                    int total = captureMode.mImageReceivedNumber;
                     float fps = total / (time / 1000f);
                     mTestSpeed.setText(getString(R.string.test_result, fps));
 
@@ -130,7 +131,7 @@ public class SpeedTestActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onReceiveImage(int num) {
+            public void onReceiveImage(int num, Image image) {
                 runOnUiThread(() -> mTestReceive.setText(getString(R.string.test_receivedImage, num)));
             }
 
@@ -139,11 +140,6 @@ public class SpeedTestActivity extends AppCompatActivity {
                 runOnUiThread(() -> mTestSend.setText(getString(R.string.test_sendRequest, num)));
             }
         });
-        if (hasCameraPermission()) {
-            openCamera();
-        } else {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
-        }
         resetTestView();
     }
 
@@ -180,6 +176,11 @@ public class SpeedTestActivity extends AppCompatActivity {
         mTestSpeed.setText(R.string.test_result_unknow);
         mTestReceive.setText(R.string.test_receivedImage_unknow);
         mTestSend.setText(R.string.test_sendRequest_unknow);
+
+        updateSize();
+        if (mCameraController.isStatusOf(CameraController.Status.Idle)) {
+            mButton.setEnabled(true);
+        }
     }
 
     void openCamera() {
@@ -193,6 +194,12 @@ public class SpeedTestActivity extends AppCompatActivity {
         mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight())
                 + "(" + mCameraController.getFmt() + ")");
         return size;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mCameraController.stopCaptureBurst();
     }
 
     class TimeUpdateRunnable implements Runnable {
@@ -219,28 +226,5 @@ public class SpeedTestActivity extends AppCompatActivity {
             }
         }
 
-    }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (hasCameraPermission()) {
-            openCamera();
-        } else {
-            Toast.makeText(this, "Please give Permissions", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    boolean hasCameraPermission() {
-        return checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (mCameraController != null) {
-            mCameraController.closeCamera(false);
-        }
     }
 }

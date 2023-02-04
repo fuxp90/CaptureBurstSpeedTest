@@ -7,7 +7,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
+import android.media.Image;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.util.Size;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -20,15 +24,20 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.sql.Time;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
-    static final int TIME_SYNC_REQ_CODE = 0xfff;
+    private static final int TIME_SYNC_REQ_CODE = 0xfff;
     private long mImageBaseTime;
     private TextView mBaseTime;
-    CameraController mCameraController;
+    private TextView mCaptureNumber;
+    private CameraController mCameraController;
     private Button mButton;
+    private static final String TAG = "MainActivity";
+    private TextView mCaptureTime;
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -37,7 +46,41 @@ public class MainActivity extends AppCompatActivity {
         mBaseTime = findViewById(R.id.baseTime);
         mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
 
-        mCameraController = new CameraController(this);
+        mCaptureNumber = findViewById(R.id.capture_number);
+        mCaptureNumber.setText(getString(R.string.capture_number, 0));
+        mCaptureTime = findViewById(R.id.time_esc);
+        mCaptureTime.setText(getString(R.string.time_esc, "0"));
+
+        mCameraController = ((CaptureApplication) getApplication()).getCameraController();
+        mButton = findViewById(R.id.start_capture);
+        mButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mImageBaseTime == 0) {
+                    Toast.makeText(getApplication(), R.string.need_set_base_time, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if (!mCameraController.isTestRunning()) {
+                    mButton.setText(R.string.stop_capture);
+                    mCameraController.startCaptureBurst(CameraController.CaptureMode.CaptureRepeating);
+                } else {
+                    mButton.setText(R.string.start_capture);
+                    mCameraController.stopCaptureBurst();
+                }
+            }
+        });
+
+        if (hasCameraPermission()) {
+            openCamera();
+        } else {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
+        }
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
             public void onCameraOpened(CameraDevice cameraDevice) {
@@ -55,12 +98,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onTestStart(CameraController.CaptureSolution captureSolution, long time) {
-
+            public void onTestStart(CameraController.CaptureMode captureSolution, long time) {
+                runOnUiThread(new TimeUpdateRunnable(time));
             }
 
             @Override
-            public void onTestEnd(CameraController.CaptureSolution captureSolution) {
+            public void onTestEnd(CameraController.CaptureMode captureSolution) {
 
             }
 
@@ -70,32 +113,28 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onReceiveImage(int num) {
-
+            public void onReceiveImage(int num, Image image) {
+                Log.d(TAG, "onReceiveImage: " + num + "," + image);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mCaptureNumber.setText(getString(R.string.capture_number, num));
+                    }
+                });
             }
         });
+    }
 
-        if (hasCameraPermission()) {
-            openCamera();
-        }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mCameraController.stopCaptureBurst();
+    }
 
-        mButton = findViewById(R.id.start_capture);
-        mButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mImageBaseTime == 0) {
-                    Toast.makeText(getApplication(), R.string.base_time_error, Toast.LENGTH_LONG).show();
-                    return;
-                }
-                if (!mCameraController.isTestRunning()) {
-                    mButton.setText(R.string.stop_capture);
-                    mCameraController.startImageBurstTest(CameraController.CaptureSolution.CaptureRepeating);
-                } else {
-                    mButton.setText(R.string.start_capture);
-                    mCameraController.stopImageBurstTest();
-                }
-            }
-        });
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mCameraController.closeCamera(false);
     }
 
     @Override
@@ -105,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
             openCamera();
         } else {
             Toast.makeText(this, "Please give Permissions", Toast.LENGTH_LONG).show();
+            finish();
         }
     }
 
@@ -156,5 +196,32 @@ public class MainActivity extends AppCompatActivity {
             mImageBaseTime = data.getLongExtra("base_time", 0);
             mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
         }
+    }
+
+
+    class TimeUpdateRunnable implements Runnable {
+
+        long mStartTime;
+
+        @SuppressLint("SimpleDateFormat")
+        SimpleDateFormat mSimpleDateFormat = new SimpleDateFormat("mm:ss");
+        Date mDate = new Date();
+
+        public TimeUpdateRunnable(long startTime) {
+            this.mStartTime = startTime;
+        }
+
+        @SuppressLint("SetTextI18n")
+        @Override
+        public void run() {
+            if (mCameraController.isTestRunning()) {
+                long time = System.currentTimeMillis() - mStartTime;
+                mDate.setTime(time);
+                String str = mSimpleDateFormat.format(mDate);
+                mCaptureTime.setText(getString(R.string.time_esc, str));
+                mHandler.postDelayed(this, 1000);
+            }
+        }
+
     }
 }
