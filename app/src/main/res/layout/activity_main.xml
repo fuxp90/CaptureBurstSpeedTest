@@ -27,6 +27,12 @@
             android:layout_height="wrap_content"
             android:text="@string/capture_number" />
 
+        <TextView
+            android:id="@+id/save_number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/save_number" />
+
     </LinearLayout>
 
     <Button

@@ -42,6 +42,7 @@
     <string name="stop_capture">Stop Capture</string>
     <string name="need_set_base_time">Please set base time first</string>
     <string name="listen_current">CurrentSound:\nTime:%1s,\nRateInHz:%2s,\nAmplitude:%3s</string>
+    <string name="save_number">SaveNumber:%d</string>
 
     <string-array name="test_solution">
         <item>Solution Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>

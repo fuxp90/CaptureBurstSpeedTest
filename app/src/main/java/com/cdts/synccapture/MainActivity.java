@@ -24,6 +24,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -33,11 +34,13 @@ public class MainActivity extends AppCompatActivity {
     private long mImageBaseTime;
     private TextView mBaseTime;
     private TextView mCaptureNumber;
+    private TextView mSaveNumber;
     private CameraController mCameraController;
     private Button mButton;
     private static final String TAG = "MainActivity";
     private TextView mCaptureTime;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Storage mStorage = CaptureApplication.getCaptureApplication().getStorage();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
         mCaptureTime = findViewById(R.id.time_esc);
         mCaptureTime.setText(getString(R.string.time_esc, "0"));
 
+        mSaveNumber = findViewById(R.id.save_number);
+        mSaveNumber.setText(getString(R.string.save_number, 0));
         mCameraController = ((CaptureApplication) getApplication()).getCameraController();
         mButton = findViewById(R.id.start_capture);
         mButton.setOnClickListener(new View.OnClickListener() {
@@ -81,6 +86,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        mStorage.setOnImageSaveCompleteListener((file, a,successful) -> {
+            runOnUiThread(() -> mSaveNumber.setText(getString(R.string.save_number, a)));
+        });
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
             public void onCameraOpened(CameraDevice cameraDevice) {
@@ -115,12 +123,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceiveImage(int num, Image image) {
                 Log.d(TAG, "onReceiveImage: " + num + "," + image);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mCaptureNumber.setText(getString(R.string.capture_number, num));
-                    }
-                });
+                runOnUiThread(() -> mCaptureNumber.setText(getString(R.string.capture_number, num)));
+                mStorage.saveImageBuffer(image, mImageBaseTime, true);
             }
         });
     }
