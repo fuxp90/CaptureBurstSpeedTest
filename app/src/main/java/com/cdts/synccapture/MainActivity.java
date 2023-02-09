@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView mBaseTime;
     private TextView mCaptureNumber;
     private TextView mSaveNumber;
+    private TextView mMemInfo;
     private CameraController mCameraController;
     private Button mButton;
     private static final String TAG = "MainActivity";
@@ -53,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
         mCaptureNumber.setText(getString(R.string.capture_number, 0));
         mCaptureTime = findViewById(R.id.time_esc);
         mCaptureTime.setText(getString(R.string.time_esc, "0"));
+
+        mMemInfo = findViewById(R.id.mem_info);
+        mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
 
         mSaveNumber = findViewById(R.id.save_number);
         mSaveNumber.setText(getString(R.string.save_number, 0));
@@ -80,13 +84,14 @@ public class MainActivity extends AppCompatActivity {
         } else {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
         }
+        Storage.getMaxMemoryInfo();
     }
 
 
     @Override
     protected void onResume() {
         super.onResume();
-        mStorage.setOnImageSaveCompleteListener((file, a,successful) -> {
+        mStorage.setOnImageSaveCompleteListener((file, a, successful) -> {
             runOnUiThread(() -> mSaveNumber.setText(getString(R.string.save_number, a)));
         });
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
@@ -123,7 +128,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceiveImage(int num, Image image) {
                 Log.d(TAG, "onReceiveImage: " + num + "," + image);
-                runOnUiThread(() -> mCaptureNumber.setText(getString(R.string.capture_number, num)));
+                runOnUiThread(() -> {
+                    mCaptureNumber.setText(getString(R.string.capture_number, num));
+                    mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
+                });
                 mStorage.saveImageBuffer(image, mImageBaseTime, true);
             }
         });

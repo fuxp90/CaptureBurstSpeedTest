@@ -52,6 +52,16 @@ public class CameraController {
         Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error
     }
 
+    private OnFmtChangedListener mOnFmtChangedListener;
+
+    public interface OnFmtChangedListener {
+        void OnFmtChanged(int fmt, String fmtStr);
+    }
+
+    public void setOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
+        mOnFmtChangedListener = onFmtChangedListener;
+    }
+
     private void changeStatus(Status status) {
         synchronized (this) {
             if (mStatus != status) {
@@ -74,6 +84,9 @@ public class CameraController {
 
     public void setImageFormat(int fmt) {
         mCaptureFormat = fmt;
+        if (mOnFmtChangedListener != null) {
+            mOnFmtChangedListener.OnFmtChanged(fmt, getFmt());
+        }
         Log.d(TAG, "setImageFormat: " + fmt);
     }
 

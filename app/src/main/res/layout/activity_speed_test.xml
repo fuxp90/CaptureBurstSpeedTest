@@ -29,7 +29,7 @@
                 android:layout_height="40dp"
                 android:layout_centerVertical="true"
                 android:gravity="center_vertical"
-                android:text="@string/test_solution"
+                android:text="@string/test_mode"
                 android:textSize="@dimen/text_size_15" />
 
             <ImageView
@@ -71,6 +71,14 @@
             android:layout_height="40dp"
             android:gravity="center_vertical"
             android:text="@string/test_result"
+            android:textSize="@dimen/text_size_15" />
+
+        <TextView
+            android:id="@+id/test_mem_info"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:text="@string/mem_info"
             android:textSize="@dimen/text_size_15" />
 
         <TextView

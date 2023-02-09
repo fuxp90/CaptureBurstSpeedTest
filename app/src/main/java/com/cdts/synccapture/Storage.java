@@ -1,7 +1,11 @@
 package com.cdts.synccapture;
 
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.graphics.ImageFormat;
 import android.media.Image;
+import android.text.format.Formatter;
 import android.util.Log;
 
 import java.io.File;
@@ -20,7 +24,7 @@ public class Storage {
 
     static final String TAG = "Storage";
     static final boolean WRITE_TIMESTAMP = false;
-
+    private File mDir;
 
     private final List<byte[]> mImageBytes = new LinkedList<>();
     private final Executor mExecutor = Executors.newFixedThreadPool(10, new ThreadFactory() {
@@ -33,6 +37,11 @@ public class Storage {
             return thread;
         }
     });
+
+    public void setDir(File dir) {
+        mDir = dir;
+        Log.d(TAG, "setDir:" + dir.getAbsolutePath());
+    }
 
     public interface OnImageSaveCompleteListener {
         void onSaveComplete(File file, int num, boolean successful);
@@ -71,38 +80,24 @@ public class Storage {
         }
     }
 
+
     private void saveToFlash(final byte[] data, AtomicInteger num, long timestamp) {
-        mExecutor.execute(new SaveTask(data, num, timestamp, mOnImageSaveCompleteListener));
+        mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
     }
 
-
     private static class SaveTask implements Runnable {
-        byte[] data;
-        AtomicInteger num;
-        long timestamp;
-        private static final File mDir;
-        private OnImageSaveCompleteListener mOnImageSaveCompleteListener;
+        private byte[] data;
+        private final AtomicInteger num;
+        private final long timestamp;
+        private final File mDir;
+        private final OnImageSaveCompleteListener mOnImageSaveCompleteListener;
 
-        static {
-            File file = CaptureApplication.getCaptureApplication().getExternalCacheDir();
-            mDir = new File(file, "Image");
-            try {
-                boolean b = mDir.mkdir();
-                if (b) {
-                    Log.d(TAG, "make image storage dir: " + mDir.getAbsolutePath() + " successful");
-                } else {
-                    Log.e(TAG, "make image storage dir: " + mDir.getAbsolutePath() + " failed");
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                Log.e(TAG, "make image storage dir: " + mDir.getAbsolutePath() + " failed");
-            }
-        }
 
-        public SaveTask(byte[] data, AtomicInteger num, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        public SaveTask(byte[] data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
             this.data = data;
             this.num = num;
             this.timestamp = timestamp;
+            mDir = file;
             mOnImageSaveCompleteListener = onImageSaveCompleteListener;
         }
 
@@ -144,5 +139,31 @@ public class Storage {
 
     private long readLong(byte[] readBuffer, int offset) {
         return (((long) readBuffer[0 + offset] << 56) + ((long) (readBuffer[1 + offset] & 255) << 48) + ((long) (readBuffer[2 + offset] & 255) << 40) + ((long) (readBuffer[3 + offset] & 255) << 32) + ((long) (readBuffer[4 + offset] & 255) << 24) + ((readBuffer[5 + offset] & 255) << 16) + ((readBuffer[6 + offset] & 255) << 8) + ((readBuffer[7 + offset] & 255) << 0));
+    }
+
+    private final static long MemMB = 1024 * 1024;
+
+    public static String getMaxMemoryInfo() {
+        StringBuilder stringBuilder = new StringBuilder();
+        Runtime rt = Runtime.getRuntime();
+        long freeMemory = rt.freeMemory();
+        long totalMemory = rt.totalMemory();
+        long maxMemory = rt.maxMemory();
+        stringBuilder.append("Dalvik MaxMemory:").append(maxMemory / MemMB).append(" MB\n");
+        stringBuilder.append("Dalvik FreeMemory:").append(freeMemory / MemMB).append(" MB\n");
+        stringBuilder.append("Dalvik TotalMemory:").append(totalMemory / MemMB).append(" MB\n");
+
+        ActivityManager activityManager = (ActivityManager) CaptureApplication.getCaptureApplication().getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+        activityManager.getMemoryInfo(info);
+        stringBuilder.append("Device RAM:").append(info.availMem / MemMB).append(" MB\n");
+        stringBuilder.append("Device Free:").append(info.availMem / MemMB).append(" MB\n");
+        Log.e(TAG, stringBuilder.toString());
+        return stringBuilder.toString();
+    }
+
+    public static class MemInfo {
+        int mTotal;
+        int mUsed;
     }
 }

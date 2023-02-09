@@ -33,6 +33,13 @@
             android:layout_height="wrap_content"
             android:text="@string/save_number" />
 
+
+        <TextView
+            android:id="@+id/mem_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/mem_info" />
+
     </LinearLayout>
 
     <Button

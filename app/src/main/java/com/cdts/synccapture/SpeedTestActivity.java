@@ -3,10 +3,8 @@ package com.cdts.synccapture;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
@@ -37,9 +35,11 @@ public class SpeedTestActivity extends AppCompatActivity {
     private TextView mTestReceive;
     private TextView mTestSpeed;
     private TextView mTestSolutionDetail;
+    private TextView mMemInfo;
 
     private CameraController.CaptureMode mCaptureSolution = CameraController.CaptureMode.CaptureRepeating;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Storage mStorage = CaptureApplication.getCaptureApplication().getStorage();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,14 +53,16 @@ public class SpeedTestActivity extends AppCompatActivity {
         mTestSolution = findViewById(R.id.test_solution);
         mTestTime = findViewById(R.id.test_time);
         mTestSolutionDetail = findViewById(R.id.test_solution_detail);
+        mMemInfo = findViewById(R.id.test_mem_info);
+        mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
-            builder.setTitle(R.string.test_choose_solution);
+            builder.setTitle(R.string.test_choose_mode);
             final CharSequence[] charSequence = new CharSequence[]{
-                    CameraController.CaptureMode.CaptureOneByOne.name(),
-                    CameraController.CaptureMode.CaptureBurst.name(),
-                    CameraController.CaptureMode.CaptureRepeating.name(),};
+                CameraController.CaptureMode.CaptureOneByOne.name(),
+                CameraController.CaptureMode.CaptureBurst.name(),
+                CameraController.CaptureMode.CaptureRepeating.name(),};
 
             int item = 0;
             for (int i = 0; i < charSequence.length; i++) {
@@ -72,10 +74,10 @@ public class SpeedTestActivity extends AppCompatActivity {
 
             builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
                 mCaptureSolution = CameraController.CaptureMode.valueOf(charSequence[which].toString());
-                mTestSolution.setText(getString(R.string.test_solution, mCaptureSolution));
-                mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_solution)[which]);
+                mTestSolution.setText(getString(R.string.test_mode, mCaptureSolution));
+                mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_mode)[which]);
                 if (mCameraController.isTestRunning()) {
-                    Toast.makeText(getApplicationContext(), R.string.test_solution_changed, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), R.string.test_mode_changed, Toast.LENGTH_LONG).show();
                 }
                 dialog.dismiss();
             });
@@ -92,8 +94,8 @@ public class SpeedTestActivity extends AppCompatActivity {
                 mCameraController.stopCaptureBurst();
             }
         });
-        mTestSolution.setText(getString(R.string.test_solution, mCaptureSolution));
-        mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_solution)[0]);
+        mTestSolution.setText(getString(R.string.test_mode, mCaptureSolution));
+        mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_mode)[0]);
         mCameraController = ((CaptureApplication) getApplication()).getCameraController();
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
@@ -192,7 +194,7 @@ public class SpeedTestActivity extends AppCompatActivity {
         List<Size> sizes = mCameraController.getImageSupportSize(mCamId);
         Size size = sizes.get(0);
         mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight())
-                + "(" + mCameraController.getFmt() + ")");
+            + "(" + mCameraController.getFmt() + ")");
         return size;
     }
 
