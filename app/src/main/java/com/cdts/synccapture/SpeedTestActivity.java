@@ -1,13 +1,10 @@
 package com.cdts.synccapture;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.graphics.ImageFormat;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraDevice;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,23 +20,23 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-public class SpeedTestActivity extends AppCompatActivity {
+public class SpeedTestActivity extends BaseActivity {
 
     private CameraController mCameraController;
     private final String mCamId = "0";
     private Button mButton;
     private TextView mTestSize;
-    private TextView mTestSolution;
+    private TextView mTestMode;
     private TextView mTestTime;
     private TextView mTestSend;
     private TextView mTestReceive;
     private TextView mTestSpeed;
-    private TextView mTestSolutionDetail;
+    private TextView mTestModeDetail;
     private TextView mMemInfo;
 
-    private CameraController.CaptureMode mCaptureSolution = CameraController.CaptureMode.CaptureRepeating;
+    private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureRepeating;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
-    private final Storage mStorage = CaptureApplication.getCaptureApplication().getStorage();
+    private final Storage mStorage = Storage.getStorage();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,11 +47,10 @@ public class SpeedTestActivity extends AppCompatActivity {
         mTestSpeed = findViewById(R.id.test_result);
         mTestSend = findViewById(R.id.test_send);
         mTestSize = findViewById(R.id.test_size);
-        mTestSolution = findViewById(R.id.test_solution);
+        mTestMode = findViewById(R.id.test_solution);
         mTestTime = findViewById(R.id.test_time);
-        mTestSolutionDetail = findViewById(R.id.test_solution_detail);
+        mTestModeDetail = findViewById(R.id.test_solution_detail);
         mMemInfo = findViewById(R.id.test_mem_info);
-        mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -66,16 +62,16 @@ public class SpeedTestActivity extends AppCompatActivity {
 
             int item = 0;
             for (int i = 0; i < charSequence.length; i++) {
-                if (mCaptureSolution == CameraController.CaptureMode.valueOf(charSequence[i] + "")) {
+                if (mCaptureMode == CameraController.CaptureMode.valueOf(charSequence[i] + "")) {
                     item = i;
                     break;
                 }
             }
 
             builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
-                mCaptureSolution = CameraController.CaptureMode.valueOf(charSequence[which].toString());
-                mTestSolution.setText(getString(R.string.test_mode, mCaptureSolution));
-                mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_mode)[which]);
+                mCaptureMode = CameraController.CaptureMode.valueOf(charSequence[which].toString());
+                mTestMode.setText(getString(R.string.test_mode, mCaptureMode));
+                mTestModeDetail.setText(getResources().getStringArray(R.array.test_mode)[which]);
                 if (mCameraController.isTestRunning()) {
                     Toast.makeText(getApplicationContext(), R.string.test_mode_changed, Toast.LENGTH_LONG).show();
                 }
@@ -88,28 +84,37 @@ public class SpeedTestActivity extends AppCompatActivity {
         mButton.setOnClickListener(v -> {
             if (!mCameraController.isTestRunning()) {
                 mButton.setText(R.string.test_stop);
-                mCameraController.startCaptureBurst(mCaptureSolution);
+                mCameraController.startCaptureBurst(mCaptureMode);
             } else {
                 mButton.setText(R.string.test_start);
                 mCameraController.stopCaptureBurst();
             }
         });
-        mTestSolution.setText(getString(R.string.test_mode, mCaptureSolution));
-        mTestSolutionDetail.setText(getResources().getStringArray(R.array.test_mode)[0]);
-        mCameraController = ((CaptureApplication) getApplication()).getCameraController();
+        mTestMode.setText(getString(R.string.test_mode, mCaptureMode));
+        mTestModeDetail.setText(getResources().getStringArray(R.array.test_mode)[0]);
+
+        setActionBarTitle(R.string.test_capture_speed);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
+        mCameraController = new CameraController(this);
+        mCameraController.setOnFmtChangedListener(Storage.getStorage());
+        mCameraController.openCamera(mCamId, updateSize());
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
-            public void onCameraOpened(CameraDevice cameraDevice) {
-
+            public void onCameraOpened(CameraController controller) {
+                controller.config();
             }
 
             @Override
             public void onCameraClosed() {
-                openCamera();
             }
 
             @Override
-            public void onConfigured(CameraCaptureSession session) {
+            public void onConfigured(CameraController controller) {
                 runOnUiThread(() -> mButton.setEnabled(true));
             }
 
@@ -134,7 +139,10 @@ public class SpeedTestActivity extends AppCompatActivity {
 
             @Override
             public void onReceiveImage(int num, Image image) {
-                runOnUiThread(() -> mTestReceive.setText(getString(R.string.test_receivedImage, num)));
+                mStorage.saveImageBuffer(image, 0, true);
+                runOnUiThread(() -> {
+                    mTestReceive.setText(getString(R.string.test_receivedImage, num));
+                });
             }
 
             @Override
@@ -143,6 +151,13 @@ public class SpeedTestActivity extends AppCompatActivity {
             }
         });
         resetTestView();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mCameraController.stopCaptureBurst();
+        mCameraController.closeCamera();
     }
 
     @Override
@@ -170,7 +185,6 @@ public class SpeedTestActivity extends AppCompatActivity {
                 break;
         }
         updateSize();
-        mCameraController.closeCamera(true);
         return super.onOptionsItemSelected(item);
     }
 
@@ -178,15 +192,10 @@ public class SpeedTestActivity extends AppCompatActivity {
         mTestSpeed.setText(R.string.test_result_unknow);
         mTestReceive.setText(R.string.test_receivedImage_unknow);
         mTestSend.setText(R.string.test_sendRequest_unknow);
-
         updateSize();
-        if (mCameraController.isStatusOf(CameraController.Status.Idle)) {
+        if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
             mButton.setEnabled(true);
         }
-    }
-
-    void openCamera() {
-        mCameraController.openCamera(mCamId, updateSize());
     }
 
     @SuppressLint("SetTextI18n")
@@ -198,11 +207,6 @@ public class SpeedTestActivity extends AppCompatActivity {
         return size;
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mCameraController.stopCaptureBurst();
-    }
 
     class TimeUpdateRunnable implements Runnable {
 
@@ -224,6 +228,7 @@ public class SpeedTestActivity extends AppCompatActivity {
                 mDate.setTime(time);
                 String str = mSimpleDateFormat.format(mDate);
                 mTestTime.setText(getString(R.string.test_time) + str);
+                mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
                 mHandler.postDelayed(this, 1000);
             }
         }

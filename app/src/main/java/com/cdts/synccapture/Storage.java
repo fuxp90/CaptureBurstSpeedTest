@@ -1,15 +1,11 @@
 package com.cdts.synccapture;
 
-import android.app.Activity;
-import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.media.Image;
-import android.text.format.Formatter;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,11 +16,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Storage {
+public class Storage implements CameraController.OnFmtChangedListener {
 
     static final String TAG = "Storage";
     static final boolean WRITE_TIMESTAMP = false;
     private File mDir;
+
+    private final static Storage sStorage = new Storage();
+
+    public static Storage getStorage() {
+        return sStorage;
+    }
 
     private final List<byte[]> mImageBytes = new LinkedList<>();
     private final Executor mExecutor = Executors.newFixedThreadPool(10, new ThreadFactory() {
@@ -61,7 +63,7 @@ public class Storage {
                 Image.Plane plane = image.getPlanes()[0];
                 ByteBuffer buffer = plane.getBuffer();
                 int len = buffer.remaining();
-                long timestamp = image.getTimestamp() - baseTime;
+                long timestamp = baseTime <= 0 ? 0 : image.getTimestamp() - baseTime;
 
                 int timeLen = WRITE_TIMESTAMP ? 8 : 0;
                 byte[] bytes = new byte[len + timeLen];
@@ -80,6 +82,26 @@ public class Storage {
         }
     }
 
+    @Override
+    public void OnFmtChanged(Context context, int fmt, String fmtStr) {
+        File dir = new File(context.getExternalCacheDir(), fmtStr);
+        if (!dir.exists()) {
+            try {
+                boolean b = dir.mkdir();
+                if (b) {
+                    Log.d(TAG, "make image storage dir: " + dir.getAbsolutePath() + " successful");
+                } else {
+                    Log.e(TAG, "make image storage dir: " + dir.getAbsolutePath() + " failed");
+                }
+                setDir(dir);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(TAG, "make image storage dir: " + dir.getAbsolutePath() + " failed");
+            }
+        } else {
+            setDir(dir);
+        }
+    }
 
     private void saveToFlash(final byte[] data, AtomicInteger num, long timestamp) {
         mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
@@ -112,14 +134,15 @@ public class Storage {
                 fileOutputStream.write(data);
                 fileOutputStream.close();
                 successful = true;
+                Log.d(TAG, "save X successful: " + file.getAbsolutePath());
             } catch (IOException e) {
                 e.printStackTrace();
                 successful = false;
-                Log.e(TAG, "save failed: " + file.getAbsolutePath());
+                Log.e(TAG, "save X failed: " + file.getAbsolutePath());
             } finally {
                 data = null;
             }
-            Log.d(TAG, "save successful: " + file.getAbsolutePath());
+
             if (mOnImageSaveCompleteListener != null) {
                 mOnImageSaveCompleteListener.onSaveComplete(file, a, successful);
             }
@@ -141,29 +164,5 @@ public class Storage {
         return (((long) readBuffer[0 + offset] << 56) + ((long) (readBuffer[1 + offset] & 255) << 48) + ((long) (readBuffer[2 + offset] & 255) << 40) + ((long) (readBuffer[3 + offset] & 255) << 32) + ((long) (readBuffer[4 + offset] & 255) << 24) + ((readBuffer[5 + offset] & 255) << 16) + ((readBuffer[6 + offset] & 255) << 8) + ((readBuffer[7 + offset] & 255) << 0));
     }
 
-    private final static long MemMB = 1024 * 1024;
 
-    public static String getMaxMemoryInfo() {
-        StringBuilder stringBuilder = new StringBuilder();
-        Runtime rt = Runtime.getRuntime();
-        long freeMemory = rt.freeMemory();
-        long totalMemory = rt.totalMemory();
-        long maxMemory = rt.maxMemory();
-        stringBuilder.append("Dalvik MaxMemory:").append(maxMemory / MemMB).append(" MB\n");
-        stringBuilder.append("Dalvik FreeMemory:").append(freeMemory / MemMB).append(" MB\n");
-        stringBuilder.append("Dalvik TotalMemory:").append(totalMemory / MemMB).append(" MB\n");
-
-        ActivityManager activityManager = (ActivityManager) CaptureApplication.getCaptureApplication().getSystemService(Context.ACTIVITY_SERVICE);
-        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
-        activityManager.getMemoryInfo(info);
-        stringBuilder.append("Device RAM:").append(info.availMem / MemMB).append(" MB\n");
-        stringBuilder.append("Device Free:").append(info.availMem / MemMB).append(" MB\n");
-        Log.e(TAG, stringBuilder.toString());
-        return stringBuilder.toString();
-    }
-
-    public static class MemInfo {
-        int mTotal;
-        int mUsed;
-    }
 }

@@ -43,7 +43,7 @@
     <string name="need_set_base_time">Please set base time first</string>
     <string name="listen_current">CurrentSound:\nTime:%1s,\nRateInHz:%2s,\nAmplitude:%3s</string>
     <string name="save_number">SaveNumber:%d</string>
-    <string name="mem_info">MemInfo:%s</string>
+    <string name="mem_info">%s</string>
 
     <string-array name="test_mode">
         <item>Mode Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>

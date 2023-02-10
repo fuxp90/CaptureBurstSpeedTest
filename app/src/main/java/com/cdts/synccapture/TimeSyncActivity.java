@@ -17,7 +17,7 @@ import androidx.core.app.ActivityCompat;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 
-public class TimeSyncActivity extends AppCompatActivity {
+public class TimeSyncActivity extends BaseActivity {
 
     private Button mStartStopBtn;
     private TextView mListenedCount;
@@ -34,7 +34,7 @@ public class TimeSyncActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_time_sync);
-
+        setActionBarTitle(R.string.test_audio_time_sync);
         findViewById(R.id.time_sync_finish).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

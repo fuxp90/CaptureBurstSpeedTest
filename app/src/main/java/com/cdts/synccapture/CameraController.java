@@ -46,6 +46,7 @@ public class CameraController {
     private int mCaptureFormat = ImageFormat.RAW10;
 
     private Status mStatus = Status.Closed;
+    private Size mSize;
     private static final int MaxImagesBuffer = 50;
 
     public enum Status {
@@ -55,7 +56,7 @@ public class CameraController {
     private OnFmtChangedListener mOnFmtChangedListener;
 
     public interface OnFmtChangedListener {
-        void OnFmtChanged(int fmt, String fmtStr);
+        void OnFmtChanged(Context context, int fmt, String fmtStr);
     }
 
     public void setOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
@@ -83,9 +84,12 @@ public class CameraController {
     }
 
     public void setImageFormat(int fmt) {
-        mCaptureFormat = fmt;
-        if (mOnFmtChangedListener != null) {
-            mOnFmtChangedListener.OnFmtChanged(fmt, getFmt());
+        if (mCaptureFormat != fmt) {
+            mCaptureFormat = fmt;
+            config();
+            if (mOnFmtChangedListener != null) {
+                mOnFmtChangedListener.OnFmtChanged(mContext, fmt, getFmt());
+            }
         }
         Log.d(TAG, "setImageFormat: " + fmt);
     }
@@ -149,11 +153,11 @@ public class CameraController {
     }
 
     public interface CameraCallback {
-        void onCameraOpened(CameraDevice cameraDevice);
+        void onCameraOpened(CameraController controller);
 
         void onCameraClosed();
 
-        void onConfigured(CameraCaptureSession session);
+        void onConfigured(CameraController controller);
 
         void onTestStart(CaptureMode captureSolution, long time);
 
@@ -167,7 +171,6 @@ public class CameraController {
     public CameraController(Context context) {
         mContext = context;
         mManager = context.getSystemService(CameraManager.class);
-
         HandlerThread thread = new HandlerThread("CameraHandler");
         thread.start();
         mHandler = new Handler(thread.getLooper());
@@ -347,6 +350,7 @@ public class CameraController {
     }
 
     public void openCamera(String id, Size size) {
+        mSize = size;
         if (mContext.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
@@ -357,13 +361,10 @@ public class CameraController {
         }
         try {
 
+            if (mOnFmtChangedListener != null) {
+                mOnFmtChangedListener.OnFmtChanged(mContext, mCaptureFormat, getFmt());
+            }
             changeStatus(Status.Opening);
-            mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), mCaptureFormat, MaxImagesBuffer);
-            mImageReader.setOnImageAvailableListener(this::onImageReceived, mHandler);
-            final Surface surface = mImageReader.getSurface();
-            mImageSurface = surface;
-
-
             mManager.openCamera(id, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice cameraDevice) {
@@ -371,33 +372,9 @@ public class CameraController {
                     mCameraDevice = cameraDevice;
                     Log.e(TAG, "onOpened " + cameraDevice);
                     if (mCameraCallback != null) {
-                        mCameraCallback.onCameraOpened(cameraDevice);
+                        mCameraCallback.onCameraOpened(CameraController.this);
                     }
-
-                    List<Surface> list = new ArrayList<>();
-                    list.add(surface);
-                    try {
-                        changeStatus(Status.Configuring);
-                        mCameraDevice.createCaptureSession(list, new CameraCaptureSession.StateCallback() {
-                            @Override
-                            public void onConfigured(@NonNull CameraCaptureSession session) {
-                                changeStatus(Status.Configured);
-                                mCameraSession = session;
-                                Log.e(TAG, "onConfigured " + mCameraSession);
-                                if (mCameraCallback != null) {
-                                    mCameraCallback.onConfigured(mCameraSession);
-                                }
-                                changeStatus(Status.Idle);
-                            }
-
-                            @Override
-                            public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-                                changeStatus(Status.Error);
-                            }
-                        }, mHandler);
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
-                    }
+                    config();
                 }
 
                 @Override
@@ -423,36 +400,72 @@ public class CameraController {
         }
     }
 
+    public void config() {
+        if (isStatusOf(Status.Opened, Status.Capturing, Status.Idle, Status.Configured)) {
+            changeStatus(Status.Configuring);
+            try {
+                if (mImageReader != null) {
+                    mImageReader.close();
+                }
+                mImageReader = ImageReader.newInstance(mSize.getWidth(), mSize.getHeight(), mCaptureFormat, MaxImagesBuffer);
+                mImageReader.setOnImageAvailableListener(this::onImageReceived, mHandler);
+                final Surface surface = mImageReader.getSurface();
+                mImageSurface = surface;
+                List<Surface> list = new ArrayList<>();
+                list.add(surface);
+                mCameraDevice.createCaptureSession(list, new CameraCaptureSession.StateCallback() {
+                    @Override
+                    public void onConfigured(@NonNull CameraCaptureSession session) {
+                        changeStatus(Status.Configured);
+                        mCameraSession = session;
+                        Log.e(TAG, "onConfigured " + mCameraSession);
+                        if (mCameraCallback != null) {
+                            mCameraCallback.onConfigured(CameraController.this);
+                        }
+                        changeStatus(Status.Idle);
+                    }
 
-    public void closeCamera(boolean callback) {
+                    @Override
+                    public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                        changeStatus(Status.Error);
+                    }
+                }, mHandler);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void closeCamera() {
+        if (isStatusOf(Status.Opening, Status.Closing)) {
+            Log.e(TAG, "closeCamera return by error status:" + mStatus);
+            return;
+        }
         Log.e(TAG, "closeCamera E: mCameraDevice:" + mCameraDevice);
         changeStatus(Status.Closing);
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    if (mCameraSession != null) {
-                        mCameraSession.close();
-                    }
-                    if (mCameraDevice != null) {
-                        mCameraDevice.close();
-                    }
-
-                    if (mImageReader != null) {
-                        mImageReader.close();
-                    }
-
-                    if (mImageSurface != null) {
-                        mImageSurface.release();
-                    }
-                    changeStatus(Status.Closed);
-                    Log.e(TAG, "closeCamera X");
-                    if (mCameraCallback != null && callback) {
-                        mCameraCallback.onCameraClosed();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+        mHandler.post(() -> {
+            try {
+                if (mCameraSession != null) {
+                    mCameraSession.close();
                 }
+                if (mCameraDevice != null) {
+                    mCameraDevice.close();
+                }
+
+                if (mImageReader != null) {
+                    mImageReader.close();
+                }
+
+                if (mImageSurface != null) {
+                    mImageSurface.release();
+                }
+                changeStatus(Status.Closed);
+                Log.e(TAG, "closeCamera X");
+                if (mCameraCallback != null) {
+                    mCameraCallback.onCameraClosed();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }

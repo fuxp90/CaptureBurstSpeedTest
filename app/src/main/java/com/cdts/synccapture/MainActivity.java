@@ -2,6 +2,7 @@ package com.cdts.synccapture;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -28,7 +29,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private static final int TIME_SYNC_REQ_CODE = 0xfff;
     private long mImageBaseTime;
@@ -41,7 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private TextView mCaptureTime;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
-    private final Storage mStorage = CaptureApplication.getCaptureApplication().getStorage();
+    private final Storage mStorage = Storage.getStorage();
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,11 +58,15 @@ public class MainActivity extends AppCompatActivity {
         mCaptureTime.setText(getString(R.string.time_esc, "0"));
 
         mMemInfo = findViewById(R.id.mem_info);
-        mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
 
         mSaveNumber = findViewById(R.id.save_number);
         mSaveNumber.setText(getString(R.string.save_number, 0));
-        mCameraController = ((CaptureApplication) getApplication()).getCameraController();
+
+        mCameraController = new CameraController(this);
+        mCameraController.setOnFmtChangedListener(Storage.getStorage());
+
+        setActionBarTitle(R.string.app_name);
+
         mButton = findViewById(R.id.start_capture);
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,25 +84,26 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-        if (hasCameraPermission()) {
-            openCamera();
-        } else {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
-        }
-        Storage.getMaxMemoryInfo();
     }
 
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (hasCameraPermission()) {
+            openCamera();
+        } else {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
+        }
+
+
+        mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
         mStorage.setOnImageSaveCompleteListener((file, a, successful) -> {
             runOnUiThread(() -> mSaveNumber.setText(getString(R.string.save_number, a)));
         });
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
-            public void onCameraOpened(CameraDevice cameraDevice) {
+            public void onCameraOpened(CameraController controller) {
 
             }
 
@@ -106,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onConfigured(CameraCaptureSession session) {
+            public void onConfigured(CameraController controller) {
 
             }
 
@@ -130,7 +137,6 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "onReceiveImage: " + num + "," + image);
                 runOnUiThread(() -> {
                     mCaptureNumber.setText(getString(R.string.capture_number, num));
-                    mMemInfo.setText(getString(R.string.mem_info, Storage.getMaxMemoryInfo()));
                 });
                 mStorage.saveImageBuffer(image, mImageBaseTime, true);
             }
@@ -141,12 +147,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mCameraController.stopCaptureBurst();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mCameraController.closeCamera(false);
+        mCameraController.closeCamera();
     }
 
     @Override
@@ -231,6 +232,7 @@ public class MainActivity extends AppCompatActivity {
                 mDate.setTime(time);
                 String str = mSimpleDateFormat.format(mDate);
                 mCaptureTime.setText(getString(R.string.time_esc, str));
+                mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
                 mHandler.postDelayed(this, 1000);
             }
         }
