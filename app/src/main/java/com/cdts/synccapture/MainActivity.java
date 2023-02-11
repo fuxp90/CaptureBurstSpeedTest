@@ -138,7 +138,7 @@ public class MainActivity extends BaseActivity {
                 runOnUiThread(() -> {
                     mCaptureNumber.setText(getString(R.string.capture_number, num));
                 });
-                mStorage.saveImageBuffer(image, mImageBaseTime, true);
+                mStorage.saveImageBuffer(image, mImageBaseTime);
             }
         });
     }

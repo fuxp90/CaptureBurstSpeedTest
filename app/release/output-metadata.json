@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.cdts.burstspeedtest",
+  "applicationId": "com.cdts.synccapture",
   "variantName": "release",
   "elements": [
     {
@@ -12,7 +12,7 @@
       "filters": [],
       "attributes": [],
       "versionCode": 1,
-      "versionName": "1.0",
+      "versionName": "2023-21-11 12:02:38 rev:37bb5a9",
       "outputFile": "app-release.apk"
     }
   ],

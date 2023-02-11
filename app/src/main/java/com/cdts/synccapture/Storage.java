@@ -9,26 +9,54 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Storage implements CameraController.OnFmtChangedListener {
 
-    static final String TAG = "Storage";
-    static final boolean WRITE_TIMESTAMP = false;
+    private static final String TAG = "Storage";
+    private static final boolean WRITE_TIMESTAMP = false;
     private File mDir;
 
     private final static Storage sStorage = new Storage();
+
+    private SaveType mSaveType = SaveType.RAM;
+
+    public SaveType getSaveType() {
+        return mSaveType;
+    }
+
+    public int getStorageNum() {
+        return mSavedImageNum.get();
+    }
+
+    public enum SaveType {
+        RAM, Flash
+    }
+
+    public void setSaveType(SaveType saveType) {
+        mSaveType = saveType;
+        Log.d(TAG, "setSaveType: " + saveType);
+    }
+
+    private OnImageSaveDirCreateListener mImageSaveDirCreateListener;
+
+    public interface OnImageSaveDirCreateListener {
+        void onImageDirCreated(File file);
+    }
 
     public static Storage getStorage() {
         return sStorage;
     }
 
-    private final List<byte[]> mImageBytes = new LinkedList<>();
+    private final List<ByteBuffer> mImageBuffer = new LinkedList<>();
     private final Executor mExecutor = Executors.newFixedThreadPool(10, new ThreadFactory() {
         int index = 0;
 
@@ -40,9 +68,27 @@ public class Storage implements CameraController.OnFmtChangedListener {
         }
     });
 
-    public void setDir(File dir) {
+
+    public void setImageSaveDirCreateListener(OnImageSaveDirCreateListener saveDirCreateListener) {
+        mImageSaveDirCreateListener = saveDirCreateListener;
+    }
+
+    public void resetSaveNum() {
+        mImageBuffer.clear();
+        int last = mSavedImageNum.getAndSet(0);
+        Log.d(TAG, "Reset SavedImageNum:" + last + " to 0");
+    }
+
+    private void setDir(File dir) {
         mDir = dir;
         Log.d(TAG, "setDir:" + dir.getAbsolutePath());
+        if (mImageSaveDirCreateListener != null) {
+            mImageSaveDirCreateListener.onImageDirCreated(dir);
+        }
+    }
+
+    public File getDir() {
+        return mDir;
     }
 
     public interface OnImageSaveCompleteListener {
@@ -56,29 +102,19 @@ public class Storage implements CameraController.OnFmtChangedListener {
         mOnImageSaveCompleteListener = onImageSaveCompleteListener;
     }
 
-    public void saveImageBuffer(Image image, long baseTime, boolean saveToFlash) {
-        switch (image.getFormat()) {
-            case ImageFormat.JPEG:
-            case ImageFormat.RAW10:
-                Image.Plane plane = image.getPlanes()[0];
-                ByteBuffer buffer = plane.getBuffer();
-                int len = buffer.remaining();
-                long timestamp = baseTime <= 0 ? 0 : image.getTimestamp() - baseTime;
-
-                int timeLen = WRITE_TIMESTAMP ? 8 : 0;
-                byte[] bytes = new byte[len + timeLen];
-                buffer.get(bytes, timeLen, len);
-                if (WRITE_TIMESTAMP) {
-                    writeLong(bytes, 0, timestamp);
-                }
-                if (saveToFlash) {
-                    saveToFlash(bytes, mSavedImageNum, timestamp);
-                } else {
-                    mImageBytes.add(bytes);
-                }
-                break;
-            case ImageFormat.RAW_SENSOR:
-                break;
+    public void saveImageBuffer(Image image, long baseTime) {
+        boolean saveToFlash = mSaveType == SaveType.Flash;
+        Image.Plane plane = image.getPlanes()[0];
+        ByteBuffer buffer = plane.getBuffer();
+        long timestamp = baseTime <= 0 ? 0 : image.getTimestamp() - baseTime;
+        if (saveToFlash) {
+            saveToFlash(buffer, mSavedImageNum, timestamp);
+        } else {
+            mImageBuffer.add(buffer);
+            int a = mSavedImageNum.incrementAndGet();
+            if (mOnImageSaveCompleteListener != null) {
+                mOnImageSaveCompleteListener.onSaveComplete(null, a, true);
+            }
         }
     }
 
@@ -107,11 +143,16 @@ public class Storage implements CameraController.OnFmtChangedListener {
         mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
     }
 
+    private void saveToFlash(final ByteBuffer data, AtomicInteger num, long timestamp) {
+        mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
+    }
+
     private static class SaveTask implements Runnable {
         private byte[] data;
         private final AtomicInteger num;
         private final long timestamp;
         private final File mDir;
+        private ByteBuffer buffer;
         private final OnImageSaveCompleteListener mOnImageSaveCompleteListener;
 
 
@@ -123,21 +164,36 @@ public class Storage implements CameraController.OnFmtChangedListener {
             mOnImageSaveCompleteListener = onImageSaveCompleteListener;
         }
 
+        public SaveTask(ByteBuffer data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
+            this.buffer = data;
+            this.num = num;
+            this.timestamp = timestamp;
+            mDir = file;
+            mOnImageSaveCompleteListener = onImageSaveCompleteListener;
+        }
+
         @Override
         public void run() {
             int a = num.incrementAndGet();
             boolean successful = false;
-            File file = new File(mDir, "image_" + a + "_" + +timestamp + ".raw");
+            String name = mDir.getName();
+            File file = new File(mDir, "image_" + a + "_" + +timestamp + "." + name.toLowerCase(Locale.ROOT));
             Log.d(TAG, "save E, num:" + a);
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(file);
-                fileOutputStream.write(data);
+                if (data != null) {
+                    fileOutputStream.write(data);
+                } else if (buffer != null) {
+                    FileChannel channel = fileOutputStream.getChannel();
+                    channel.write(buffer);
+                    channel.close();
+                    buffer.clear();
+                }
                 fileOutputStream.close();
                 successful = true;
                 Log.d(TAG, "save X successful: " + file.getAbsolutePath());
             } catch (IOException e) {
                 e.printStackTrace();
-                successful = false;
                 Log.e(TAG, "save X failed: " + file.getAbsolutePath());
             } finally {
                 data = null;
@@ -147,6 +203,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
                 mOnImageSaveCompleteListener.onSaveComplete(file, a, successful);
             }
         }
+
     }
 
     private void writeLong(byte[] writeBuffer, int offset, long v) {

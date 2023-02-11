@@ -99,7 +99,7 @@ public class CameraController {
     }
 
     public enum CaptureMode {
-        CaptureOneByOne(), CaptureRepeating(), CaptureBurst();
+        CaptureOneByOne(), CaptureBurst(), CaptureRepeating();
 
         long mStartTime;
         long mEndTime;
@@ -185,8 +185,6 @@ public class CameraController {
         try {
             CameraCharacteristics characteristics = mManager.getCameraCharacteristics(id);
             StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-
-
             int timestamp_source = characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
             Log.e(TAG, "timestamp_source: " + timestamp_source);
             Size[] sizes = configurationMap.getOutputSizes(mCaptureFormat);
@@ -209,7 +207,7 @@ public class CameraController {
                 builder.addTarget(mImageSurface);
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
-                builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(30, 30));
+                builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(24, 24));
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                 requestList.add(builder.build());
             } catch (CameraAccessException e) {
@@ -229,7 +227,7 @@ public class CameraController {
     }
 
 
-    CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+    private final CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
         @Override
         public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
             int sendNum = (int) request.getTag();
@@ -321,7 +319,7 @@ public class CameraController {
         }
     }
 
-    boolean checkTestEndCondition() {
+    public boolean checkTestEndCondition() {
         if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating) {
             mCaptureMode.stopRecordTime();
             switch (mCaptureMode) {
@@ -441,6 +439,10 @@ public class CameraController {
             Log.e(TAG, "closeCamera return by error status:" + mStatus);
             return;
         }
+        if (mCameraDevice == null) {
+            Log.e(TAG, "closeCamera return mCameraDevice :" + null);
+            return;
+        }
         Log.e(TAG, "closeCamera E: mCameraDevice:" + mCameraDevice);
         changeStatus(Status.Closing);
         mHandler.post(() -> {
@@ -476,7 +478,7 @@ public class CameraController {
             case ImageFormat.JPEG:
                 return "JPEG";
             case ImageFormat.RAW10:
-                return "RAW10";
+                return "RAW_10";
             case ImageFormat.RAW_SENSOR:
                 return "RAW_SENSOR";
         }

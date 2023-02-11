@@ -6,6 +6,7 @@
     <string name="test_capture_speed">CaptureSpeedTest</string>
     <string name="test_image_size">Image Size:%s</string>
     <string name="test_mode">Mode:%s</string>
+    <string name="test_fmt">Format:%s</string>
     <string name="test_time">Test Time:</string>
     <string name="test_sendRequest">Send Request:%d</string>
     <string name="test_receivedImage">Received Image:%d</string>
@@ -44,10 +45,19 @@
     <string name="listen_current">CurrentSound:\nTime:%1s,\nRateInHz:%2s,\nAmplitude:%3s</string>
     <string name="save_number">SaveNumber:%d</string>
     <string name="mem_info">%s</string>
+    <string name="test_choose_fmt">ChooseImageFormat</string>
+    <string name="test_StorageImage">Saved Images(%s):%d</string>
 
-    <string-array name="test_mode">
+    <string-array name="test_mode_detail">
         <item>Mode Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>
         <item>Mode Detail:\Send requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
         <item>Mode Detail:\Send a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
     </string-array>
+
+
+    <string name="test_StoragePath">Saved Path:\n%s</string>
+    <string name="clear_image">Clear image dir</string>
+    <string name="test_save_type">Save Type:%s</string>
+    <string name="test_choose_save_type">Choose Save Type</string>
+    <string name="test_save_type_changed">Please wait last save complete</string>
 </resources>

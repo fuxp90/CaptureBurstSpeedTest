@@ -52,15 +52,15 @@ public class BaseActivity extends AppCompatActivity {
         long totalMemory = rt.totalMemory();
         long maxMemory = rt.maxMemory();
         //stringBuilder.append("Dalvik MaxMemory:").append(maxMemory / MemMB).append(" MB\n");
-        stringBuilder.append("Dalvik FreeMemory:").append(freeMemory / MemMB).append(" MB\n");
-        stringBuilder.append("Dalvik TotalMemory:").append(totalMemory / MemMB).append(" MB\n");
+        stringBuilder.append("Dalvik UsedMemory:").append((totalMemory - freeMemory) / MemMB).append(" MB\n");
+        stringBuilder.append("Dalvik TotalMemory:").append(maxMemory / MemMB).append(" MB\n");
 
         ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
         activityManager.getMemoryInfo(info);
 
 
-        stringBuilder.append("Device Free:").append(info.availMem / MemMB).append(" MB\n");
+        stringBuilder.append("Device Used:").append((info.totalMem - info.availMem) / MemMB).append(" MB\n");
         stringBuilder.append("Device RAM:").append(info.totalMem / MemMB).append(" MB\n");
         Log.e(TAG, stringBuilder.toString());
         return stringBuilder.toString();
