@@ -4,8 +4,6 @@ import androidx.annotation.NonNull;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.graphics.ImageFormat;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,7 +14,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,9 +41,9 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mSaveType;
 
     private final static String TAG = "BaseActivity";
-    private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureRepeating;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Storage mStorage = Storage.getStorage();
+    private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureRepeating;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,29 +62,21 @@ public class SpeedTestActivity extends BaseActivity {
         mTestSaveNum = findViewById(R.id.test_storage);
         mTestStoragePath = findViewById(R.id.test_storage_detail);
         mSaveType = findViewById(R.id.test_save_type);
+        mButton = findViewById(R.id.test_button);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
             builder.setTitle(R.string.test_choose_mode);
-            final CharSequence[] charSequence = new CharSequence[]{
-                    CameraController.CaptureMode.CaptureOneByOne.name(),
-                    CameraController.CaptureMode.CaptureBurst.name(),
-                    CameraController.CaptureMode.CaptureRepeating.name(),};
-
-            int item = 0;
-            for (int i = 0; i < charSequence.length; i++) {
-                if (mCaptureMode == CameraController.CaptureMode.valueOf(charSequence[i] + "")) {
-                    item = i;
-                    break;
-                }
-            }
-
+            final String[] charSequence = Utils.toStringArray(CameraController.CaptureMode.values());
+            int item = Utils.indexOf(CameraController.CaptureMode.values(), mCaptureMode);
             builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
-                mCaptureMode = CameraController.CaptureMode.valueOf(charSequence[which].toString());
-                mTestMode.setText(getString(R.string.test_mode, mCaptureMode));
+                CameraController.CaptureMode captureMode = CameraController.CaptureMode.valueOf(charSequence[which]);
+                mTestMode.setText(getString(R.string.test_mode, captureMode));
                 mTestModeDetail.setText(getResources().getStringArray(R.array.test_mode_detail)[which]);
                 if (mCameraController.isTestRunning()) {
                     Toast.makeText(getApplicationContext(), R.string.test_mode_changed, Toast.LENGTH_LONG).show();
+                } else {
+                    mCaptureMode = captureMode;
                 }
                 dialog.dismiss();
             });
@@ -97,22 +86,15 @@ public class SpeedTestActivity extends BaseActivity {
         findViewById(R.id.test_save_type_select).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
                 builder.setTitle(R.string.test_choose_save_type);
-                final CharSequence[] charSequence = new CharSequence[]{Storage.SaveType.RAM.name(), Storage.SaveType.Flash.name()};
-                int item = 0;
-                for (int i = 0; i < charSequence.length; i++) {
-                    if (charSequence[i].equals(mStorage.getSaveType().name())) {
-                        item = i;
-                        break;
-                    }
-                }
+                final String[] charSequence = Utils.toStringArray(Storage.SaveType.values());
+                int item = Utils.indexOf(Storage.SaveType.values(), mStorage.getSaveType());
                 builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
                     if (!isStorageComplete()) {
                         Toast.makeText(getApplicationContext(), R.string.test_save_type_changed, Toast.LENGTH_LONG).show();
                     } else {
-                        Storage.SaveType saveType = Storage.SaveType.valueOf(charSequence[which].toString());
+                        Storage.SaveType saveType = Storage.SaveType.valueOf(charSequence[which]);
                         mSaveType.setText(getString(R.string.test_save_type, saveType));
                         mStorage.setSaveType(saveType);
                     }
@@ -125,36 +107,18 @@ public class SpeedTestActivity extends BaseActivity {
         findViewById(R.id.test_fmt_select).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
                 builder.setTitle(R.string.test_choose_fmt);
-                final CharSequence[] charSequence = new CharSequence[]{"JPEG", "RAW_10", "RAW_SENSOR"};
-                int item = 0;
-                for (int i = 0; i < charSequence.length; i++) {
-                    if (charSequence[i].equals(mCameraController.getFmt())) {
-                        item = i;
-                        break;
-                    }
-                }
+                final String[] charSequence = Utils.toStringArray(CameraController.Fmt.values());
+                int item = Utils.indexOf(CameraController.Fmt.values(), mCameraController.getFmt());
                 builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
                     if (mCameraController.isTestRunning()) {
                         Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
                     } else {
-                        mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
-                        int fmt = 0;
-                        switch (which) {
-                            case 0:
-                                fmt = ImageFormat.JPEG;
-                                break;
-                            case 1:
-                                fmt = ImageFormat.RAW10;
-                                break;
-                            case 2:
-                                fmt = ImageFormat.RAW_SENSOR;
-                                break;
-                        }
+                        CameraController.Fmt fmt = CameraController.Fmt.valueOf(charSequence[which]);
                         mCameraController.setImageFormat(fmt);
-                        updateSize();
+                        mTestFmt.setText(getString(R.string.test_fmt, fmt));
+                        resetView();
                     }
                     dialog.dismiss();
                 });
@@ -163,7 +127,6 @@ public class SpeedTestActivity extends BaseActivity {
         });
 
 
-        mButton = findViewById(R.id.test_button);
         mButton.setOnClickListener(v -> {
             if (!mCameraController.isTestRunning()) {
                 mButton.setText(R.string.test_stop);
@@ -173,26 +136,22 @@ public class SpeedTestActivity extends BaseActivity {
                 mCameraController.stopCaptureBurst();
             }
         });
-        mTestMode.setText(getString(R.string.test_mode, mCaptureMode));
-        mTestModeDetail.setText(getResources().getStringArray(R.array.test_mode_detail)[mCaptureMode.ordinal()]);
-        mTestSaveNum.setText(getString(R.string.test_StorageImage, mStorage.getSaveType(), 0));
+
         setActionBarTitle(R.string.test_capture_speed);
     }
 
     boolean isStorageComplete() {
         if (mStorage.getSaveType() == Storage.SaveType.RAM) return true;
-        return mCaptureMode.isComplete() && mCaptureMode.mImageReceivedNumber == mStorage.getStorageNum();
+        CameraController.CaptureMode captureMode = mCameraController.getCaptureMode();
+        return captureMode.isComplete() && captureMode.mImageReceivedNumber == mStorage.getStorageNum();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
-        mSaveType.setText(getString(R.string.test_save_type, mStorage.getSaveType()));
         mCameraController = new CameraController(this);
         mCameraController.setOnFmtChangedListener(Storage.getStorage());
-        mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
-        mCameraController.openCamera(mCamId, updateSize());
+        mCameraController.openCamera(mCamId, mCameraController.getImageSupportSize(mCamId).get(0));
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
             public void onCameraOpened(CameraController controller) {
@@ -211,7 +170,7 @@ public class SpeedTestActivity extends BaseActivity {
             @Override
             public void onTestStart(CameraController.CaptureMode captureSolution, long start) {
                 runOnUiThread(() -> {
-                    resetTestView();
+                    resetView();
                 });
                 mStorage.resetSaveNum();
                 runOnUiThread(new TimeUpdateRunnable(start));
@@ -241,18 +200,37 @@ public class SpeedTestActivity extends BaseActivity {
                 runOnUiThread(() -> mTestSend.setText(getString(R.string.test_sendRequest, num)));
             }
         });
-        resetTestView();
         mStorage.setOnImageSaveCompleteListener((file, a, successful) -> {
             runOnUiThread(() -> mTestSaveNum.setText(getString(R.string.test_StorageImage, mStorage.getSaveType(), a)));
         });
-
         mStorage.setImageSaveDirCreateListener(file -> runOnUiThread(() -> {
             mTestStoragePath.setText(getString(R.string.test_StoragePath, file.getAbsolutePath()));
         }));
 
-        File file = mStorage.getDir();
-        String path = file == null ? "-" : file.getAbsolutePath();
+        resetView();
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void resetView() {
+        mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
+        mSaveType.setText(getString(R.string.test_save_type, mStorage.getSaveType()));
+        mTestMode.setText(getString(R.string.test_mode, mCaptureMode));
+        mTestModeDetail.setText(getResources().getStringArray(R.array.test_mode_detail)[mCaptureMode.ordinal()]);
+        mTestSaveNum.setText(getString(R.string.test_StorageImage, mStorage.getSaveType(), 0));
+        mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
+        File dir = mStorage.getDir();
+        String path = dir == null ? "-" : dir.getAbsolutePath();
         mTestStoragePath.setText(getString(R.string.test_StoragePath, path));
+        mTestSpeed.setText(R.string.test_result_unknow);
+        mTestReceive.setText(R.string.test_receivedImage_unknow);
+        mTestSend.setText(R.string.test_sendRequest_unknow);
+        List<Size> sizes = mCameraController.getImageSupportSize(mCamId);
+        Size size = sizes.get(0);
+        mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()));
+        mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
+        if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
+            mButton.setEnabled(true);
+        }
     }
 
     @Override
@@ -286,8 +264,7 @@ public class SpeedTestActivity extends BaseActivity {
 
                         dialog.dismiss();
 
-                        final AlertDialog alertDialog = new AlertDialog.Builder(SpeedTestActivity.this).setTitle(R.string.clear_image).
-                                setMessage("Deleting:" + file.getAbsolutePath()).show();
+                        final AlertDialog alertDialog = new AlertDialog.Builder(SpeedTestActivity.this).setTitle(R.string.clear_image).setMessage("Deleting:" + file.getAbsolutePath()).show();
 
                         new Thread(() -> {
                             File[] files = file.listFiles();
@@ -312,26 +289,6 @@ public class SpeedTestActivity extends BaseActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-    void resetTestView() {
-        mTestSpeed.setText(R.string.test_result_unknow);
-        mTestReceive.setText(R.string.test_receivedImage_unknow);
-        mTestSend.setText(R.string.test_sendRequest_unknow);
-        updateSize();
-        if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
-            mButton.setEnabled(true);
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    Size updateSize() {
-        List<Size> sizes = mCameraController.getImageSupportSize(mCamId);
-        Size size = sizes.get(0);
-        mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()) + "(" + mCameraController.getFmt() + ")");
-        mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
-        return size;
-    }
-
 
     class TimeUpdateRunnable implements Runnable {
 

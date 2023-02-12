@@ -1,7 +1,6 @@
 package com.cdts.synccapture;
 
 import android.content.Context;
-import android.graphics.ImageFormat;
 import android.media.Image;
 import android.util.Log;
 
@@ -16,7 +15,6 @@ import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Storage implements CameraController.OnFmtChangedListener {
@@ -38,7 +36,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
     }
 
     public enum SaveType {
-        RAM, Flash
+        RAM, Flash;
     }
 
     public void setSaveType(SaveType saveType) {
@@ -119,8 +117,8 @@ public class Storage implements CameraController.OnFmtChangedListener {
     }
 
     @Override
-    public void OnFmtChanged(Context context, int fmt, String fmtStr) {
-        File dir = new File(context.getExternalCacheDir(), fmtStr);
+    public void OnFmtChanged(Context context, CameraController.Fmt fmt) {
+        File dir = new File(context.getExternalCacheDir(), fmt.name());
         if (!dir.exists()) {
             try {
                 boolean b = dir.mkdir();

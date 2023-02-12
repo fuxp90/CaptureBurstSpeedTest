@@ -49,9 +49,10 @@
     <string name="test_StorageImage">Saved Images(%s):%d</string>
 
     <string-array name="test_mode_detail">
-        <item>Mode Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>
-        <item>Mode Detail:\Send requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
-        <item>Mode Detail:\Send a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
+        <item>RequestOneByOne Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>
+        <item>RequestBurst Detail:\nSend requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
+        <item>RequestRepeating Detail:\nSend a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
+        <item>RequestFixRate Detail:\nSend a single request as Fixed Rate(24fps)</item>
     </string-array>
 
 

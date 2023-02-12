@@ -17,6 +17,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
@@ -28,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 
 public class CameraController {
 
@@ -43,11 +46,20 @@ public class CameraController {
     private boolean isTestRunning;
     private static final String TAG = "CameraController";
     private ImageReader mImageReader;
-    private int mCaptureFormat = ImageFormat.RAW10;
+    private Fmt mCaptureFormat = Fmt.RAW10;
 
     private Status mStatus = Status.Closed;
     private Size mSize;
     private static final int MaxImagesBuffer = 50;
+    private static final int CAPTURE_FPS = 24;
+
+    public CaptureMode getCaptureMode() {
+        return mCaptureMode;
+    }
+
+    public Fmt getFmt() {
+        return mCaptureFormat;
+    }
 
     public enum Status {
         Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error
@@ -56,7 +68,7 @@ public class CameraController {
     private OnFmtChangedListener mOnFmtChangedListener;
 
     public interface OnFmtChangedListener {
-        void OnFmtChanged(Context context, int fmt, String fmtStr);
+        void OnFmtChanged(Context context, Fmt fmt);
     }
 
     public void setOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
@@ -83,23 +95,33 @@ public class CameraController {
         }
     }
 
-    public void setImageFormat(int fmt) {
+    public void setImageFormat(Fmt fmt) {
         if (mCaptureFormat != fmt) {
             mCaptureFormat = fmt;
             config();
             if (mOnFmtChangedListener != null) {
-                mOnFmtChangedListener.OnFmtChanged(mContext, fmt, getFmt());
+                mOnFmtChangedListener.OnFmtChanged(mContext, fmt);
             }
         }
         Log.d(TAG, "setImageFormat: " + fmt);
     }
 
-    public int getCaptureFormat() {
-        return mCaptureFormat;
+
+    public enum Fmt {
+        JPEG(ImageFormat.JPEG), RAW10(ImageFormat.RAW10), RAW_SENSOR(ImageFormat.RAW_SENSOR);
+        private final int mFmt;
+
+        Fmt(int i) {
+            mFmt = i;
+        }
+
+        public int getFmt() {
+            return mFmt;
+        }
     }
 
     public enum CaptureMode {
-        CaptureOneByOne(), CaptureBurst(), CaptureRepeating();
+        CaptureOneByOne(), CaptureBurst(), CaptureRepeating(), CaptureFixRate();
 
         long mStartTime;
         long mEndTime;
@@ -187,9 +209,9 @@ public class CameraController {
             StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             int timestamp_source = characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
             Log.e(TAG, "timestamp_source: " + timestamp_source);
-            Size[] sizes = configurationMap.getOutputSizes(mCaptureFormat);
+            Size[] sizes = configurationMap.getOutputSizes(mCaptureFormat.mFmt);
             Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " " + getFmt() + " : " + Arrays.toString(sizes));
+            Log.d(TAG, id + " " + mCaptureFormat + " : " + Arrays.toString(sizes));
 
             return Arrays.asList(sizes);
         } catch (CameraAccessException e) {
@@ -207,7 +229,6 @@ public class CameraController {
                 builder.addTarget(mImageSurface);
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
-                builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(24, 24));
                 builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                 requestList.add(builder.build());
             } catch (CameraAccessException e) {
@@ -263,6 +284,9 @@ public class CameraController {
                         captureMode.addRequestNumber(captureMode.getBurstNumber());
                         mCameraSession.captureBurst(buildRequest(captureMode.getBurstNumber()), mCaptureCallback, mHandler);
                         break;
+                    case CaptureFixRate:
+                        mFixRateRequestTask.run();
+                        break;
                 }
                 captureMode.startRecordTime();
             } catch (CameraAccessException e) {
@@ -271,6 +295,21 @@ public class CameraController {
             }
         }
     }
+
+    private final Runnable mFixRateRequestTask = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
+                mCaptureMode.addRequestNumber(1);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+            if (isTestRunning) {
+                mHandler.postDelayed(this, (int) (1000f / CAPTURE_FPS));
+            }
+        }
+    };
 
     void onImageReceived(ImageReader reader) {
         try {
@@ -314,6 +353,7 @@ public class CameraController {
                 break;
 
             case CaptureRepeating:
+            case CaptureFixRate:
                 // ignore
                 break;
         }
@@ -332,6 +372,7 @@ public class CameraController {
                     }
                     break;
                 case CaptureBurst:
+                case CaptureFixRate:
                 case CaptureOneByOne:
                     mCameraCallback.onTestEnd(mCaptureMode);
                     break;
@@ -347,6 +388,10 @@ public class CameraController {
         CaptureMode.mCameraCallback = cameraCallback;
     }
 
+    public Size getSize() {
+        return mSize;
+    }
+
     public void openCamera(String id, Size size) {
         mSize = size;
         if (mContext.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -360,7 +405,7 @@ public class CameraController {
         try {
 
             if (mOnFmtChangedListener != null) {
-                mOnFmtChangedListener.OnFmtChanged(mContext, mCaptureFormat, getFmt());
+                mOnFmtChangedListener.OnFmtChanged(mContext, mCaptureFormat);
             }
             changeStatus(Status.Opening);
             mManager.openCamera(id, new CameraDevice.StateCallback() {
@@ -405,7 +450,7 @@ public class CameraController {
                 if (mImageReader != null) {
                     mImageReader.close();
                 }
-                mImageReader = ImageReader.newInstance(mSize.getWidth(), mSize.getHeight(), mCaptureFormat, MaxImagesBuffer);
+                mImageReader = ImageReader.newInstance(mSize.getWidth(), mSize.getHeight(), mCaptureFormat.mFmt, MaxImagesBuffer);
                 mImageReader.setOnImageAvailableListener(this::onImageReceived, mHandler);
                 final Surface surface = mImageReader.getSurface();
                 mImageSurface = surface;
@@ -470,19 +515,6 @@ public class CameraController {
                 e.printStackTrace();
             }
         });
-    }
-
-    public String getFmt() {
-        int fmt = mCaptureFormat;
-        switch (fmt) {
-            case ImageFormat.JPEG:
-                return "JPEG";
-            case ImageFormat.RAW10:
-                return "RAW_10";
-            case ImageFormat.RAW_SENSOR:
-                return "RAW_SENSOR";
-        }
-        return "";
     }
 
 }
