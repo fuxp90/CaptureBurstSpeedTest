@@ -18,7 +18,6 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.text.TextUtils;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
@@ -33,8 +32,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.IntFunction;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class CameraController {
 
@@ -76,6 +75,8 @@ public class CameraController {
     }
 
     private OnFmtChangedListener mOnFmtChangedListener;
+    private final Timer mTimer = new Timer("CaptureFixRate");
+    private TimerTask mTimerTask;
 
     public interface OnFmtChangedListener {
         void OnFmtChanged(Context context, Fmt fmt);
@@ -260,12 +261,9 @@ public class CameraController {
                     builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
                     builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
                     builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
-//                    builder.set(CaptureRequest.COLOR_CORRECTION_GAINS,);
-//                    builder.set(CaptureRequest.COLOR_CORRECTION_TRANSFORM,);
                 }
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
-
                 requestList.add(builder.build());
             } catch (CameraAccessException e) {
                 e.printStackTrace();
@@ -321,7 +319,23 @@ public class CameraController {
                         mCameraSession.captureBurst(buildRequest(captureMode.getBurstNumber()), mCaptureCallback, mHandler);
                         break;
                     case CaptureFixRate:
-                        mFixRateRequestTask.run();
+
+                        if (mTimerTask != null) {
+                            mTimerTask.cancel();
+                            mTimerTask = null;
+                        }
+                        mTimerTask = new TimerTask() {
+                            @Override
+                            public void run() {
+                                try {
+                                    mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
+                                    mCaptureMode.addRequestNumber(1);
+                                } catch (CameraAccessException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        mTimer.schedule(mTimerTask, 0, (int) (1000f / CAPTURE_FPS));
                         break;
                 }
                 captureMode.startRecordTime();
@@ -331,21 +345,6 @@ public class CameraController {
             }
         }
     }
-
-    private final Runnable mFixRateRequestTask = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
-                mCaptureMode.addRequestNumber(1);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            }
-            if (isTestRunning) {
-                mHandler.postDelayed(this, (int) (1000f / CAPTURE_FPS));
-            }
-        }
-    };
 
     void onImageReceived(ImageReader reader) {
         try {
@@ -396,7 +395,8 @@ public class CameraController {
     }
 
     public boolean checkTestEndCondition() {
-        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating) {
+        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating ||
+            mCaptureMode == CaptureMode.CaptureFixRate) {
             mCaptureMode.stopRecordTime();
             switch (mCaptureMode) {
                 case CaptureRepeating:
@@ -407,8 +407,14 @@ public class CameraController {
                         e.printStackTrace();
                     }
                     break;
-                case CaptureBurst:
                 case CaptureFixRate:
+                    if (mTimerTask != null) {
+                        mTimerTask.cancel();
+                        mTimerTask = null;
+                        Log.d(TAG, "checkTestEndCondition: mTimerTask.cancel() ");
+                    }
+
+                case CaptureBurst:
                 case CaptureOneByOne:
                     mCameraCallback.onTestEnd(mCaptureMode);
                     break;

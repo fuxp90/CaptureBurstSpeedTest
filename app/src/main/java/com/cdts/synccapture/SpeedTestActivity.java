@@ -47,7 +47,7 @@ public class SpeedTestActivity extends BaseActivity {
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Storage mStorage = Storage.getStorage();
-    private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureRepeating;
+    private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureFixRate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
