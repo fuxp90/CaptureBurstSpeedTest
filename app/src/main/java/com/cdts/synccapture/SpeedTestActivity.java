@@ -172,6 +172,9 @@ public class SpeedTestActivity extends BaseActivity {
                                     dialog.dismiss();
                                 }
                             }).show();
+                        } else {
+                            mCameraController.set3AMode(mode);
+                            resetView();
                         }
                     }
                     dialog.dismiss();
@@ -287,7 +290,7 @@ public class SpeedTestActivity extends BaseActivity {
 
         m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
-        mManualParameter.setText(parameter.getDesc());
+        mManualParameter.setText(parameter.getDesc(mCameraController.get3AMode() == CameraController.Capture3AMode.Auto));
     }
 
     @Override

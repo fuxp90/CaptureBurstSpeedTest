@@ -575,11 +575,19 @@ public class CameraController {
         }
 
 
-        public String getDesc() {
+        public String getDesc(boolean is3AAuto) {
             StringBuilder builder = new StringBuilder();
             builder.append("SensorExposureTimeRange(Nanoseconds):").append(mExposureTimeRange.toString()).append("\n");
             builder.append("SensorSensitivityRange:").append(mSensitivityRange.toString()).append("\n");
             builder.append("OpticalZoom(Millimeters):").append(Arrays.toString(mFocalLengths)).append("\n");
+            if (!is3AAuto) {
+                if (mExposureTime != null)
+                    builder.append("ManualExposureTime(Nanoseconds):").append(mExposureTime).append("\n");
+                if (mSensitivity != null)
+                    builder.append("ManualSensitivity:").append(mSensitivity.toString()).append("\n");
+                if (mFocusDistance != null)
+                    builder.append("ManualFocusDistance:").append(mFocusDistance).append("\n");
+            }
             return builder.toString();
         }
 
