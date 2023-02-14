@@ -61,4 +61,15 @@
     <string name="test_save_type">Save Type:%s</string>
     <string name="test_choose_save_type">Choose Save Type</string>
     <string name="test_save_type_changed">Please wait last save complete</string>
+    <string name="test_3a_mode">3A Mode:%s</string>
+    <string name="test_choose_3a_mode">Choose 3A mode</string>
+    <string name="set_3a_parameter">Set 3A Parameter</string>
+    <string name="exposure_time">ExposureTime</string>
+    <string name="exposure_time_desc">ExposureTimeRange:%s</string>
+    <string name="sensitivity">Sensitivity</string>
+    <string name="sensitivity_desc">SensitivityRange:%s</string>
+    <string name="input_a_value">Tap to input a value</string>
+    <string name="focus_distance">FocusDistance</string>
+    <string name="focus_distance_desc">FocusDistanceRange:%s</string>
+    <string name="input_3a_parameter_err">Input 3A Parameter Error</string>
 </resources>

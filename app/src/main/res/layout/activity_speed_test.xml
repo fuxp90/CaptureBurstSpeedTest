@@ -94,6 +94,31 @@
                 android:src="@drawable/ic_baseline_chevron_right_24" />
         </RelativeLayout>
 
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:background="#0FEF7100"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/test_3a_mode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:gravity="center_vertical"
+                android:text="@string/test_3a_mode"
+                android:textSize="@dimen/text_size_15" />
+
+            <ImageView
+                android:id="@+id/test_3a_mode_select"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_baseline_chevron_right_24" />
+        </RelativeLayout>
+
         <TextView
             android:id="@+id/test_time"
             android:layout_width="match_parent"
@@ -139,6 +164,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:visibility="gone"
             android:text="@string/mem_info"
             android:textSize="@dimen/text_size_15" />
 
@@ -157,6 +183,11 @@
             android:background="#08000000"
             android:paddingTop="10dp"
             android:paddingBottom="10dp" />
+
+        <TextView
+            android:id="@+id/manual_parameter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 
 

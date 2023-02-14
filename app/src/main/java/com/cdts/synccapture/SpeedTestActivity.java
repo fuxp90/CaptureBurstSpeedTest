@@ -4,12 +4,14 @@ import androidx.annotation.NonNull;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Size;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -39,6 +41,8 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mTestSaveNum;
     private TextView mTestStoragePath;
     private TextView mSaveType;
+    private TextView mManualParameter;
+    private TextView m3AMode;
 
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -63,6 +67,8 @@ public class SpeedTestActivity extends BaseActivity {
         mTestStoragePath = findViewById(R.id.test_storage_detail);
         mSaveType = findViewById(R.id.test_save_type);
         mButton = findViewById(R.id.test_button);
+        mManualParameter = findViewById(R.id.manual_parameter);
+        m3AMode = findViewById(R.id.test_3a_mode);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -117,7 +123,6 @@ public class SpeedTestActivity extends BaseActivity {
                     } else {
                         CameraController.Fmt fmt = CameraController.Fmt.valueOf(charSequence[which]);
                         mCameraController.setImageFormat(fmt);
-                        mTestFmt.setText(getString(R.string.test_fmt, fmt));
                         resetView();
                     }
                     dialog.dismiss();
@@ -126,6 +131,54 @@ public class SpeedTestActivity extends BaseActivity {
             }
         });
 
+
+        findViewById(R.id.test_3a_mode_select).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
+                builder.setTitle(R.string.test_choose_3a_mode);
+                final String[] charSequence = Utils.toStringArray(CameraController.Capture3AMode.values());
+                int item = Utils.indexOf(CameraController.Capture3AMode.values(), mCameraController.get3AMode());
+                builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
+                    if (mCameraController.isTestRunning()) {
+                        Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
+                    } else {
+                        CameraController.Capture3AMode mode = CameraController.Capture3AMode.valueOf(charSequence[which]);
+
+                        if (mode == CameraController.Capture3AMode.Manual) {
+                            final View view = LayoutInflater.from(getApplication()).inflate(R.layout.layout_3a_input, null);
+                            AlertDialog.Builder p = new AlertDialog.Builder(SpeedTestActivity.this);
+
+                            CameraController.ManualParameter parameter = mCameraController.getManualParameter();
+                            parameter.setupViewRange(view);
+
+                            p.setTitle(R.string.set_3a_parameter);
+                            p.setView(view);
+                            p.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    if (parameter.saveInputParameter(view)) {
+                                        mCameraController.set3AMode(mode);
+                                        resetView();
+                                        dialog.dismiss();
+                                    } else {
+                                        Toast.makeText(getApplicationContext(), R.string.input_3a_parameter_err, Toast.LENGTH_LONG).show();
+                                    }
+
+                                }
+                            }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                }
+                            }).show();
+                        }
+                    }
+                    dialog.dismiss();
+                });
+                builder.show();
+            }
+        });
 
         mButton.setOnClickListener(v -> {
             if (!mCameraController.isTestRunning()) {
@@ -231,6 +284,10 @@ public class SpeedTestActivity extends BaseActivity {
         if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
             mButton.setEnabled(true);
         }
+
+        m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
+        CameraController.ManualParameter parameter = mCameraController.getManualParameter();
+        mManualParameter.setText(parameter.getDesc());
     }
 
     @Override
