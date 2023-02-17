@@ -14,6 +14,18 @@ android {
         versionName getBuildDate()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        sourceSets {
+            main {
+                //这里使用相对路径，相对于build.gradle的路径
+                jniLibs.srcDirs = ['src/main/cpp/libs']
+            }
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+                abiFilters "arm64-v8a"
+            }
+        }
     }
 
     buildTypes {
@@ -26,6 +38,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.10.2"
+        }
+    }
+    ndkVersion '25.1.8937393'
 }
 
 static def getBuildDate() {

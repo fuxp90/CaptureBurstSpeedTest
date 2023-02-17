@@ -1,10 +1,13 @@
 package com.cdts.synccapture;
 
+import static android.hardware.camera2.CameraMetadata.LENS_INFO_FOCUS_DISTANCE_CALIBRATION_APPROXIMATE;
+import static android.hardware.camera2.CameraMetadata.LENS_INFO_FOCUS_DISTANCE_CALIBRATION_CALIBRATED;
+import static android.hardware.camera2.CameraMetadata.LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
-import android.graphics.Paint;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -51,6 +54,7 @@ public class CameraController {
     private ImageReader mImageReader;
     private Fmt mCaptureFormat = Fmt.RAW10;
 
+    private static final boolean NeedCheckAFState = false;
     private Status mStatus = Status.Closed;
     private Size mSize;
     private static final int MaxImagesBuffer = 50;
@@ -66,17 +70,20 @@ public class CameraController {
         return mCaptureFormat;
     }
 
+    private int mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
+
     public enum Capture3AMode {
         Auto, Manual
     }
 
     public enum Status {
-        Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error
+        Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error, AFChecking, AFChecked
     }
 
     private OnFmtChangedListener mOnFmtChangedListener;
-    private final Timer mTimer = new Timer("CaptureFixRate");
-    private TimerTask mTimerTask;
+    private Timer mTimer;
+
+    private final Timer[] mTimerArray = new Timer[2];
 
     public interface OnFmtChangedListener {
         void OnFmtChanged(Context context, Fmt fmt);
@@ -123,7 +130,7 @@ public class CameraController {
     }
 
     public enum Fmt {
-        JPEG(ImageFormat.JPEG), RAW10(ImageFormat.RAW10), RAW_SENSOR(ImageFormat.RAW_SENSOR);
+        JPEG(ImageFormat.JPEG), RAW10(ImageFormat.RAW10), RAW_SENSOR(ImageFormat.RAW_SENSOR), YUV(ImageFormat.YUV_420_888);
         private final int mFmt;
 
         Fmt(int i) {
@@ -136,7 +143,7 @@ public class CameraController {
     }
 
     public enum CaptureMode {
-        CaptureOneByOne(), CaptureBurst(), CaptureRepeating(), CaptureFixRate();
+        CaptureOneByOne(), CaptureBurst(), CaptureRepeating(), CaptureFixRate(), CaptureMultiThread, CaptureOnAhead;
 
         long mStartTime;
         long mEndTime;
@@ -178,7 +185,6 @@ public class CameraController {
             mImageReceivedNumber = 0;
             Log.d(TAG, "CaptureSolution reset");
         }
-
 
         synchronized boolean isComplete() {
             return mCaptureSendNumber == mImageReceivedNumber;
@@ -260,7 +266,8 @@ public class CameraController {
 
                     builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
                     builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
-                    builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
+//                    builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
+                    builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
                 }
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
@@ -276,6 +283,7 @@ public class CameraController {
         Log.e(TAG, "stopCaptureBurst");
         if (isStatusOf(Status.Capturing)) {
             changeStatus(Status.Idle);
+            mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
             isTestRunning = false;
             checkTestEndCondition();
         }
@@ -287,6 +295,15 @@ public class CameraController {
         public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
             int sendNum = (int) request.getTag();
             Log.d(TAG, "onCaptureStarted sendNum " + sendNum + " timestamp:" + timestamp);
+
+            if (mCaptureMode == CaptureMode.CaptureOnAhead && mStatus == Status.Capturing) {
+                try {
+                    mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
+                    mCaptureMode.addRequestNumber(1);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
 
@@ -297,10 +314,73 @@ public class CameraController {
         }
     };
 
+    private boolean checkAf() {
+
+        if (!NeedCheckAFState) return true;
+        Log.d(TAG, "checkAf: mStatus:" + mStatus + " m3AMode:" + m3AMode);
+        if (m3AMode == Capture3AMode.Auto) return true;
+
+        if (isStatusOf(Status.AFChecking)) return false;
+
+        if (isStatusOf(Status.AFChecked)) return true;
+        changeStatus(Status.AFChecking);
+        switch (mAfState) {
+            case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
+            case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED:
+                try {
+                    mCameraSession.stopRepeating();
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }
+                return true;
+            default:
+                try {
+                    CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                    builder.addTarget(mImageSurface);
+                    builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
+                    builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                    builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
+                    builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
+                    builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+                    builder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
+                    mCameraSession.setRepeatingRequest(builder.build(), new CameraCaptureSession.CaptureCallback() {
+                        @Override
+                        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                            super.onCaptureCompleted(session, request, result);
+                            Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+                            Log.d(TAG, "checkAf afState: " + afState);
+                            if (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
+                                try {
+                                    changeStatus(Status.AFChecked);
+                                    mCameraSession.stopRepeating();
+                                    mHandler.postDelayed(() -> {
+                                        Log.d(TAG, "checkAf startCaptureBurst by AFChecked");
+                                        startCaptureBurst(mCaptureMode);
+                                    }, 500);
+
+                                } catch (CameraAccessException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }, mHandler);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }
+                return false;
+        }
+
+    }
+
     public void startCaptureBurst(CaptureMode captureMode) {
         Log.e(TAG, "startCaptureBurst: " + captureMode);
-        changeStatus(Status.Capturing);
+
         mCaptureMode = captureMode;
+        if (!checkAf()) {
+            return;
+        }
+
+        changeStatus(Status.Capturing);
         isTestRunning = true;
         if (mCameraSession != null) {
             mCaptureMode.reset();
@@ -308,6 +388,7 @@ public class CameraController {
             try {
                 switch (captureMode) {
                     case CaptureOneByOne:
+                    case CaptureOnAhead:
                         mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
                         captureMode.addRequestNumber(1);
                         break;
@@ -319,12 +400,8 @@ public class CameraController {
                         mCameraSession.captureBurst(buildRequest(captureMode.getBurstNumber()), mCaptureCallback, mHandler);
                         break;
                     case CaptureFixRate:
-
-                        if (mTimerTask != null) {
-                            mTimerTask.cancel();
-                            mTimerTask = null;
-                        }
-                        mTimerTask = new TimerTask() {
+                        mTimer.cancel();
+                        mTimer.scheduleAtFixedRate(new TimerTask() {
                             @Override
                             public void run() {
                                 try {
@@ -334,9 +411,32 @@ public class CameraController {
                                     e.printStackTrace();
                                 }
                             }
-                        };
-                        mTimer.schedule(mTimerTask, 0, (int) (1000f / CAPTURE_FPS));
+                        }, 0, (int) (1000f / CAPTURE_FPS));
                         break;
+
+                    case CaptureMultiThread:
+                        for (int i = 0; i < mTimerArray.length; i++) {
+                            int period = (int) (1000f / CAPTURE_FPS);
+                            if (mTimerArray[i] != null) {
+                                mTimerArray[i].cancel();
+                                mTimerArray[i] = null;
+                            }
+                            mTimerArray[i] = new Timer();
+                            mTimerArray[i].scheduleAtFixedRate(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        mCameraSession.capture(buildRequest(1).get(0), mCaptureCallback, mHandler);
+                                        mCaptureMode.addRequestNumber(1);
+                                    } catch (CameraAccessException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }, (long) i * period / 2, period);
+                        }
+
+                        break;
+
                 }
                 captureMode.startRecordTime();
             } catch (CameraAccessException e) {
@@ -395,8 +495,8 @@ public class CameraController {
     }
 
     public boolean checkTestEndCondition() {
-        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating ||
-            mCaptureMode == CaptureMode.CaptureFixRate) {
+        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating || mCaptureMode == CaptureMode.CaptureFixRate
+            || mCaptureMode == CaptureMode.CaptureOnAhead || mCaptureMode == CaptureMode.CaptureMultiThread) {
             mCaptureMode.stopRecordTime();
             switch (mCaptureMode) {
                 case CaptureRepeating:
@@ -407,14 +507,24 @@ public class CameraController {
                         e.printStackTrace();
                     }
                     break;
+
+
+                case CaptureMultiThread:
+                    for (int i = 0; i < mTimerArray.length; i++) {
+                        if (mTimerArray[i] != null) {
+                            mTimerArray[i].cancel();
+                            mTimerArray[i] = null;
+                        }
+                    }
                 case CaptureFixRate:
-                    if (mTimerTask != null) {
-                        mTimerTask.cancel();
-                        mTimerTask = null;
+                    if (mTimer != null) {
+                        mTimer.cancel();
+                        mTimer = null;
                         Log.d(TAG, "checkTestEndCondition: mTimerTask.cancel() ");
                     }
 
                 case CaptureBurst:
+                case CaptureOnAhead:
                 case CaptureOneByOne:
                     mCameraCallback.onTestEnd(mCaptureMode);
                     break;
@@ -569,13 +679,28 @@ public class CameraController {
         Range<Integer> mSensitivityRange;
         float[] mFocalLengths;
         Float mMinFocusDistance;
+        Integer mFocusDistanceCalibration;
+        String mFocusDistanceCalibrationStr;
 
         void initialize(CameraCharacteristics characteristics) {
             mExposureTimeRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
             mSensitivityRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE);
             mFocalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
             mMinFocusDistance = characteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
-
+            int calibration = characteristics.get(CameraCharacteristics.LENS_INFO_FOCUS_DISTANCE_CALIBRATION);
+            switch (calibration) {
+                case LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED:
+                    mFocusDistanceCalibrationStr = "UNCALIBRATED";
+                    break;
+                case LENS_INFO_FOCUS_DISTANCE_CALIBRATION_APPROXIMATE:
+                    mFocusDistanceCalibrationStr = "APPROXIMATE";
+                    break;
+                case LENS_INFO_FOCUS_DISTANCE_CALIBRATION_CALIBRATED:
+                    mFocusDistanceCalibrationStr = "CALIBRATED";
+                    break;
+                default:
+                    mFocusDistanceCalibrationStr = "unknown";
+            }
 
             Log.d(TAG, toString());
         }
@@ -586,6 +711,9 @@ public class CameraController {
             builder.append("SensorExposureTimeRange(Nanoseconds):").append(mExposureTimeRange.toString()).append("\n");
             builder.append("SensorSensitivityRange:").append(mSensitivityRange.toString()).append("\n");
             builder.append("OpticalZoom(Millimeters):").append(Arrays.toString(mFocalLengths)).append("\n");
+            builder.append("MinimumFocusDistance(").append(mFocusDistanceCalibrationStr).append("):").append(mMinFocusDistance).append("\n");
+
+
             if (!is3AAuto) {
                 if (mExposureTime != null)
                     builder.append("ManualExposureTime(Nanoseconds):").append(mExposureTime).append("\n");
@@ -599,15 +727,7 @@ public class CameraController {
 
         @Override
         public String toString() {
-            return "ManualParameter{" +
-                    "mExposureTime=" + mExposureTime +
-                    ", mSensitivity=" + mSensitivity +
-                    ", mFocusDistance=" + mFocusDistance +
-                    ", mExposureTimeRange=" + mExposureTimeRange +
-                    ", mSensitivityRange=" + mSensitivityRange +
-                    ", mFocalLengths=" + Arrays.toString(mFocalLengths) +
-                    ", mMinFocusDistance=" + mMinFocusDistance +
-                    '}';
+            return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange + ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}';
         }
 
         public void setupViewRange(View view) {
