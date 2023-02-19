@@ -5,6 +5,7 @@ import static android.hardware.camera2.CameraMetadata.LENS_INFO_FOCUS_DISTANCE_C
 import static android.hardware.camera2.CameraMetadata.LENS_INFO_FOCUS_DISTANCE_CALIBRATION_UNCALIBRATED;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
@@ -16,7 +17,11 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.ColorSpaceTransform;
+import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.RggbChannelVector;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.icu.util.TimeUnit;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
@@ -24,9 +29,11 @@ import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
+import android.util.TimeUtils;
 import android.view.Surface;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -59,8 +66,9 @@ public class CameraController {
     private Size mSize;
     private static final int MaxImagesBuffer = 50;
     private static final int CAPTURE_FPS = 24;
-    private final ManualParameter mManualParameter = new ManualParameter();
+
     private Capture3AMode m3AMode = Capture3AMode.Manual;
+    private final ManualParameter mManualParameter = ManualParameter.getManualParameter();
 
     public CaptureMode getCaptureMode() {
         return mCaptureMode;
@@ -71,17 +79,23 @@ public class CameraController {
     }
 
     private int mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
+    private Surface mPreviewSurface;
+
+    public void setPreviewSurface(Surface surface) {
+        mPreviewSurface = surface;
+    }
 
     public enum Capture3AMode {
         Auto, Manual
     }
 
     public enum Status {
-        Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error, AFChecking, AFChecked
+        Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error, AFChecking, AFChecked, Previewing
     }
 
     private OnFmtChangedListener mOnFmtChangedListener;
     private Timer mTimer;
+    public static final long NS = 1000_000_000;
 
     private final Timer[] mTimerArray = new Timer[2];
 
@@ -263,11 +277,13 @@ public class CameraController {
                 } else {
                     builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
                     builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                    builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
 
                     builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
                     builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
-//                    builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
-                    builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+                    builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
+
+                    mManualParameter.restoreAwbParameter(builder);
                 }
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
@@ -369,7 +385,92 @@ public class CameraController {
                 }
                 return false;
         }
+    }
 
+    public interface OnManual3AChangedListener {
+        void onManual3AChanged(ManualParameter parameter);
+    }
+
+    public void startPreview(OnManual3AChangedListener listener) {
+        CaptureRequest.Builder builder = null;
+        try {
+            changeStatus(Status.Previewing);
+            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            builder.addTarget(mPreviewSurface);
+            builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
+            builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            mCameraSession.setRepeatingRequest(builder.build(), new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                    super.onCaptureCompleted(session, request, result);
+                    mManualParameter.mExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                    mManualParameter.mSensitivity = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                    mManualParameter.mFocusDistance = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
+                    int awb = result.get(CaptureResult.CONTROL_AWB_STATE);
+                    if (awb == CaptureResult.CONTROL_AWB_STATE_CONVERGED) {
+                        CaptureRequest.Builder builder = null;
+                        try {
+                            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+                            builder.addTarget(mPreviewSurface);
+                            builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+                            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                            builder.set(CaptureRequest.CONTROL_AWB_LOCK, true);
+                            builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+
+                            mCameraSession.setRepeatingRequest(builder.build(), new CameraCaptureSession.CaptureCallback() {
+                                @Override
+                                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                                    super.onCaptureCompleted(session, request, result);
+                                    int awb = result.get(CaptureResult.CONTROL_AWB_STATE);
+                                    mManualParameter.mExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                                    mManualParameter.mSensitivity = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                                    mManualParameter.mFocusDistance = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
+
+                                    if (awb == CaptureResult.CONTROL_AWB_STATE_LOCKED) {
+                                        mManualParameter.saveAwbParameter(result);
+                                    }
+
+                                    if (listener != null) {
+                                        listener.onManual3AChanged(mManualParameter);
+                                    }
+                                }
+                            }, mHandler);
+                        } catch (CameraAccessException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                    if (listener != null) {
+                        listener.onManual3AChanged(mManualParameter);
+                    }
+
+                }
+            }, mHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void update3AParameter() {
+        CaptureRequest.Builder builder = null;
+        try {
+            changeStatus(Status.Previewing);
+            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            builder.addTarget(mPreviewSurface);
+            builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
+            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+            builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+            builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF);
+            mManualParameter.restoreAwbParameter(builder);
+            builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
+            builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
+            builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
+            mCameraSession.setRepeatingRequest(builder.build(), null, mHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     public void startCaptureBurst(CaptureMode captureMode) {
@@ -400,7 +501,10 @@ public class CameraController {
                         mCameraSession.captureBurst(buildRequest(captureMode.getBurstNumber()), mCaptureCallback, mHandler);
                         break;
                     case CaptureFixRate:
-                        mTimer.cancel();
+                        if (mTimer != null) {
+                            mTimer.cancel();
+                        }
+                        mTimer = new Timer();
                         mTimer.scheduleAtFixedRate(new TimerTask() {
                             @Override
                             public void run() {
@@ -495,8 +599,7 @@ public class CameraController {
     }
 
     public boolean checkTestEndCondition() {
-        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating || mCaptureMode == CaptureMode.CaptureFixRate
-            || mCaptureMode == CaptureMode.CaptureOnAhead || mCaptureMode == CaptureMode.CaptureMultiThread) {
+        if (mCaptureMode.isComplete() || mCaptureMode == CaptureMode.CaptureRepeating || mCaptureMode == CaptureMode.CaptureFixRate || mCaptureMode == CaptureMode.CaptureOnAhead || mCaptureMode == CaptureMode.CaptureMultiThread) {
             mCaptureMode.stopRecordTime();
             switch (mCaptureMode) {
                 case CaptureRepeating:
@@ -607,7 +710,11 @@ public class CameraController {
                 final Surface surface = mImageReader.getSurface();
                 mImageSurface = surface;
                 List<Surface> list = new ArrayList<>();
-                list.add(surface);
+                if (mPreviewSurface != null) {
+                    list.add(mPreviewSurface);
+                } else {
+                    list.add(surface);
+                }
                 mCameraDevice.createCaptureSession(list, new CameraCaptureSession.StateCallback() {
                     @Override
                     public void onConfigured(@NonNull CameraCaptureSession session) {
@@ -646,17 +753,26 @@ public class CameraController {
             try {
                 if (mCameraSession != null) {
                     mCameraSession.close();
+                    mCameraSession = null;
                 }
                 if (mCameraDevice != null) {
                     mCameraDevice.close();
+                    mCameraDevice = null;
                 }
 
                 if (mImageReader != null) {
                     mImageReader.close();
+                    mImageReader = null;
                 }
 
                 if (mImageSurface != null) {
                     mImageSurface.release();
+                    mImageSurface = null;
+                }
+
+                if (mPreviewSurface != null) {
+                    mPreviewSurface.release();
+                    mPreviewSurface = null;
                 }
                 changeStatus(Status.Closed);
                 Log.e(TAG, "closeCamera X");
@@ -669,18 +785,46 @@ public class CameraController {
         });
     }
 
-    static class ManualParameter {
-
+    public static class ManualParameter {
+        private static final ManualParameter mManualParameter = new ManualParameter();
         public Long mExposureTime;
         public Integer mSensitivity;
+        public Float mMinFocusDistance;
+
         public Float mFocusDistance;
+
+        public MeteringRectangle[] mAwbMeteringRectangles;
+        private int mAwbAberrationMode;
+        private RggbChannelVector mAwbColorCorrectionGains;
+        private ColorSpaceTransform mAwbColorSpaceTransform;
+        private int mCorrectionMode;
 
         Range<Long> mExposureTimeRange;
         Range<Integer> mSensitivityRange;
         float[] mFocalLengths;
-        Float mMinFocusDistance;
+
         Integer mFocusDistanceCalibration;
         String mFocusDistanceCalibrationStr;
+
+        public static ManualParameter getManualParameter() {
+            return mManualParameter;
+        }
+
+        void saveAwbParameter(TotalCaptureResult result) {
+            mAwbMeteringRectangles = result.get(CaptureResult.CONTROL_AWB_REGIONS);
+            mAwbAberrationMode = result.get(CaptureResult.COLOR_CORRECTION_ABERRATION_MODE);
+            mAwbColorCorrectionGains = result.get(CaptureResult.COLOR_CORRECTION_GAINS);
+            mAwbColorSpaceTransform = result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM);
+            mCorrectionMode = result.get(CaptureResult.COLOR_CORRECTION_MODE);
+        }
+
+        void restoreAwbParameter(CaptureRequest.Builder builder) {
+            builder.set(CaptureRequest.CONTROL_AWB_REGIONS, mAwbMeteringRectangles);
+            builder.set(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE, mAwbAberrationMode);
+            builder.set(CaptureRequest.COLOR_CORRECTION_GAINS, mAwbColorCorrectionGains);
+            builder.set(CaptureRequest.COLOR_CORRECTION_TRANSFORM, mAwbColorSpaceTransform);
+            builder.set(CaptureRequest.COLOR_CORRECTION_MODE, mCorrectionMode);
+        }
 
         void initialize(CameraCharacteristics characteristics) {
             mExposureTimeRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
@@ -702,17 +846,35 @@ public class CameraController {
                     mFocusDistanceCalibrationStr = "unknown";
             }
 
+            if (mExposureTime == null) mExposureTime = CameraController.NS / 50;
+            if (mSensitivity == null)
+                mSensitivity = (int) (0.5f * (mSensitivityRange.getUpper() - mSensitivityRange.getLower()) + mSensitivityRange.getLower());
+            if (mFocusDistance == null) mFocusDistance = (float) (0.5f * (mMinFocusDistance));
             Log.d(TAG, toString());
         }
 
+        public String getCurrentDesc() {
+            StringBuilder builder = new StringBuilder();
+            if (mExposureTime != null) {
+                @SuppressLint("DefaultLocale") String s = String.format("(%.2fs)", mExposureTime * 1f / NS);
+                builder.append("ManualExposureTime(Nanoseconds):").append(mExposureTime).append(s).append("\n");
+            }
+            if (mSensitivity != null)
+                builder.append("ManualSensitivity:").append(mSensitivity.toString()).append("\n");
+            if (mFocusDistance != null)
+                builder.append("ManualFocusDistance:").append(mFocusDistance).append("\n");
+            return builder.toString();
+        }
 
         public String getDesc(boolean is3AAuto) {
+
             StringBuilder builder = new StringBuilder();
-            builder.append("SensorExposureTimeRange(Nanoseconds):").append(mExposureTimeRange.toString()).append("\n");
+            @SuppressLint("DefaultLocale") String s = String.format("(%.2fs~%.2fs)", mExposureTimeRange.getUpper() * 1f / NS, mExposureTimeRange.getLower() * 1f / NS);
+
+            builder.append("SensorExposureTimeRange(Nanoseconds):").append(mExposureTimeRange.toString()).append(s).append("\n");
             builder.append("SensorSensitivityRange:").append(mSensitivityRange.toString()).append("\n");
             builder.append("OpticalZoom(Millimeters):").append(Arrays.toString(mFocalLengths)).append("\n");
             builder.append("MinimumFocusDistance(").append(mFocusDistanceCalibrationStr).append("):").append(mMinFocusDistance).append("\n");
-
 
             if (!is3AAuto) {
                 if (mExposureTime != null)
@@ -727,41 +889,16 @@ public class CameraController {
 
         @Override
         public String toString() {
-            return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange + ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}';
-        }
-
-        public void setupViewRange(View view) {
-            int[] ints = {R.id.exposure_time_desc, R.id.sensitivity_desc, R.id.focus_distance_desc};
-            int[] descId = {R.string.exposure_time_desc, R.string.sensitivity_desc, R.string.focus_distance_desc};
-            String[] desc = {mExposureTimeRange.toString(), mSensitivityRange.toString(), "[0-" + mMinFocusDistance + "]"};
-
-            for (int i = 0; i < ints.length; i++) {
-                TextView tv = view.findViewById(ints[i]);
-                tv.setText(view.getResources().getString(descId[i], desc[i]));
-            }
-
+            return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange +
+                    ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}'
+                    + "@" + Integer.toHexString(hashCode());
         }
 
         public boolean saveInputParameter(View view) {
-            int[] ints = {R.id.exposure_time, R.id.sensitivity, R.id.focus_distance};
-            String[] values = new String[ints.length];
-            for (int i = 0; i < ints.length; i++) {
-                EditText tv = view.findViewById(ints[i]);
-                values[i] = tv.getText().toString();
-                Log.d(TAG, "saveInputParameter " + i + ":" + values[i]);
-            }
-
-            try {
-                mExposureTime = Long.parseLong(values[0]);
-                mSensitivity = Integer.parseInt(values[1]);
-                mFocusDistance = Float.parseFloat(values[2]);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-
             return true;
         }
+
+
     }
 
 }

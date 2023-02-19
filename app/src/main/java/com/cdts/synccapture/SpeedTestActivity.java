@@ -4,14 +4,13 @@ import androidx.annotation.NonNull;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
+import android.content.Intent;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Size;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,6 +41,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mTestStoragePath;
     private TextView mSaveType;
     private TextView mManualParameter;
+    private TextView mManualCurrent;
     private TextView m3AMode;
 
     private final static String TAG = "BaseActivity";
@@ -67,8 +67,9 @@ public class SpeedTestActivity extends BaseActivity {
         mTestStoragePath = findViewById(R.id.test_storage_detail);
         mSaveType = findViewById(R.id.test_save_type);
         mButton = findViewById(R.id.test_button);
-        mManualParameter = findViewById(R.id.manual_parameter);
+        mManualParameter = findViewById(R.id.manual_parameter_range);
         m3AMode = findViewById(R.id.test_3a_mode);
+        mManualCurrent = findViewById(R.id.manual_current);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -146,32 +147,10 @@ public class SpeedTestActivity extends BaseActivity {
                         CameraController.Capture3AMode mode = CameraController.Capture3AMode.valueOf(charSequence[which]);
 
                         if (mode == CameraController.Capture3AMode.Manual) {
-                            final View view = LayoutInflater.from(getApplication()).inflate(R.layout.layout_3a_input, null);
-                            AlertDialog.Builder p = new AlertDialog.Builder(SpeedTestActivity.this);
 
-                            CameraController.ManualParameter parameter = mCameraController.getManualParameter();
-                            parameter.setupViewRange(view);
+                            Intent intent = new Intent(getApplication(), ManualActivity.class);
+                            startActivityForResult(intent, 0x123);
 
-                            p.setTitle(R.string.set_3a_parameter);
-                            p.setView(view);
-                            p.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    if (parameter.saveInputParameter(view)) {
-                                        mCameraController.set3AMode(mode);
-                                        resetView();
-                                        dialog.dismiss();
-                                    } else {
-                                        Toast.makeText(getApplicationContext(), R.string.input_3a_parameter_err, Toast.LENGTH_LONG).show();
-                                    }
-
-                                }
-                            }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                }
-                            }).show();
                         } else {
                             mCameraController.set3AMode(mode);
                             resetView();
@@ -290,7 +269,13 @@ public class SpeedTestActivity extends BaseActivity {
 
         m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
-        mManualParameter.setText(parameter.getDesc(mCameraController.get3AMode() == CameraController.Capture3AMode.Auto));
+        mManualParameter.setText(parameter.getDesc(true));
+        if (mCameraController.get3AMode() == CameraController.Capture3AMode.Auto) {
+            mManualCurrent.setVisibility(View.GONE);
+        } else {
+            mManualCurrent.setVisibility(View.VISIBLE);
+            mManualCurrent.setText(parameter.getCurrentDesc());
+        }
     }
 
     @Override

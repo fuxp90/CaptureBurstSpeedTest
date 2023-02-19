@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="540px"
+        android:layout_height="720px"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp" />
+
+
+    <com.cdts.synccapture.MySeekBar
+        android:id="@+id/exposure_time_seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#11BF0000" />
+
+    <com.cdts.synccapture.MySeekBar
+        android:id="@+id/sensitivity_seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#113900BF" />
+
+    <com.cdts.synccapture.MySeekBar
+        android:id="@+id/focus_seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1113BF00" />
+
+    <Button
+        android:id="@+id/reset_to_auto"
+        android:layout_marginTop="50dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/reset_3a_auto" />
+
+    <Button
+        android:id="@+id/save_3a_parameter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/save_3a_parameter" />
+</LinearLayout>

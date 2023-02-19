@@ -49,12 +49,12 @@
     <string name="test_StorageImage">Saved Images(%s):%d</string>
 
     <string-array name="test_mode_detail">
-        <item>RequestOneByOne Detail:\nSend a single request, waiting for HAL return the Image, then we do next capture</item>
+        <item>RequestOneByOne Detail:\nSend a single request, waiting for received Image(onImageAvailable), then we do next capture</item>
         <item>RequestBurst Detail:\nSend requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
         <item>RequestRepeating Detail:\nSend a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
         <item>RequestFixRate Detail:\nSend a single request as Fixed Rate(24fps)</item>
-        <item>CaptureMultiThread Detail:\nUse multiple threads to send next requests alternately</item>
-        <item>CaptureOnAhead Detail:\nSend the next request ahead of the onCaptureStart callback</item>
+        <item>CaptureMultiThread Detail:\nUse 2 threads to send next requests alternately</item>
+        <item>CaptureOnAhead Detail:\nAdvance the next request to the onCaptureStart callback</item>
     </string-array>
 
 
@@ -67,11 +67,18 @@
     <string name="test_choose_3a_mode">Choose 3A mode</string>
     <string name="set_3a_parameter">Set 3A Parameter</string>
     <string name="exposure_time">ExposureTime</string>
+    <string name="exposure_time_ss">SS</string>
     <string name="exposure_time_desc">ExposureTimeRange:%s</string>
+    <string name="sensitivity_iso">ISO</string>
     <string name="sensitivity">Sensitivity</string>
     <string name="sensitivity_desc">SensitivityRange:%s</string>
-    <string name="input_a_value">Tap to input a value</string>
+    <string name="input_a_value">Input</string>
     <string name="focus_distance">FocusDistance</string>
+    <string name="focus_distance_af">AF</string>
     <string name="focus_distance_desc">FocusDistanceRange:%s</string>
     <string name="input_3a_parameter_err">Input 3A Parameter Error</string>
+    <string name="manual_title">Manual3A</string>
+    <string name="exposure_time_mic">Fine adjustment</string>
+    <string name="save_3a_parameter">Save Current 3A Parameter</string>
+    <string name="reset_3a_auto">Reset 3A Parameter</string>
 </resources>
