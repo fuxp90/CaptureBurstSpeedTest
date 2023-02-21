@@ -66,10 +66,16 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
             Long valMax = mTimeStatics.values().stream().max((o1, o2) -> (int) (o1 - o2)).get();
             Long valMin = mTimeStatics.values().stream().max((o1, o2) -> (int) (o2 - o1)).get();
 
-            final Long[] sum = {0L};
-            mTimeStatics.values().forEach(aLong -> sum[0] += aLong);
+            Long keyMax = mTimeStatics.keySet().stream().max((o1, o2) -> (int) (o1 - o2)).get();
+            Long keyMin = mTimeStatics.keySet().stream().max((o1, o2) -> (int) (o2 - o1)).get();
 
-            Log.d("TimeStaticsView", "onDraw: values sum " + sum[0]);
+            final Long[] sum = {0L, 0L};
+            mTimeStatics.values().forEach(aLong -> sum[0] += aLong);
+            mTimeStatics.keySet().forEach(aLong -> sum[1] += aLong * mTimeStatics.get(aLong));
+            Log.d("TimeStaticsView", "values sum " + sum[0] + ",key sum:" + sum[1]);
+
+            @SuppressLint("DefaultLocale") String keyAvg = String.format("%.2f", sum[1] * 1f / sum[0]);
+
 
             int itemMinLen = (int) (h * 0.2f);
             int itemMaxLen = (int) (h * 0.8f);
@@ -106,13 +112,17 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
 
             }
 
-            if (mTheoreticalTime != 0) {
-                mPaint.setTextAlign(Paint.Align.LEFT);
-                mPaint.setColor(Color.BLUE);
-                Paint.FontMetrics fontMetrics = mPaint.getFontMetrics();
-                float textHeight = fontMetrics.bottom - fontMetrics.top;
-                canvas.drawText("Theoretical request interval:" + mTheoreticalTime + "ms", mLeftPadding, textHeight, mPaint);
-            }
+            Paint.FontMetrics fontMetrics = mPaint.getFontMetrics();
+            float textHeight = fontMetrics.bottom - fontMetrics.top;
+            mPaint.setTextAlign(Paint.Align.LEFT);
+            mPaint.setColor(Color.BLUE);
+            float textY = 0;
+//            if (mTheoreticalTime != 0) {
+//                textY += textHeight;
+//                canvas.drawText("Target Interval:" + mTheoreticalTime + "ms", mLeftPadding, textHeight, mPaint);
+//            }
+            textY += textHeight;
+            canvas.drawText("Min:" + keyMin + "ms" + ",Max:" + keyMax + "ms,Avg:" + keyAvg + "ms", mLeftPadding, textY, mPaint);
         }
     }
 }
