@@ -223,6 +223,13 @@ public class CameraController {
         public boolean isSupportRecordRequestTimeDelay() {
             return mSupportRecordRequestTimeDelay;
         }
+
+        public long getTheoreticalTime() {
+            if (this == CaptureFixRate) {
+                return 1000 / CAPTURE_FPS;
+            }
+            return 0;
+        }
     }
 
     public interface CameraCallback {

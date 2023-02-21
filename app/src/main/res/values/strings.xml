@@ -52,7 +52,7 @@
         <item>RequestOneByOne Detail:\nSend a single request, waiting for received Image(onImageAvailable), then we do next capture</item>
         <item>RequestBurst Detail:\nSend requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
         <item>RequestRepeating Detail:\nSend a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
-        <item>RequestFixRate Detail:\nSend a single request as Fixed Rate(24fps)</item>
+        <item>RequestFixRate Detail:\nSend a single request as Fixed Rate(8fps)</item>
         <item>CaptureMultiThread Detail:\nUse 2 threads to send next requests alternately</item>
         <item>CaptureOnAhead Detail:\nAdvance the next request to the onCaptureStart callback</item>
     </string-array>

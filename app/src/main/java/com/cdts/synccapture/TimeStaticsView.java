@@ -12,6 +12,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageView {
     public TimeStaticsView(Context context) {
@@ -28,11 +29,19 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
 
 
     private Map<Long, Long> mTimeStatics;
+    private long mTheoreticalTime;
 
-    public void setTimeStatics(Map<Long, Long> timeStatics) {
+    public void setTimeStatics(Map<Long, Long> timeStatics, long theoreticalTime) {
         mTimeStatics = timeStatics;
-        invalidate();
+        mTheoreticalTime = theoreticalTime;
+        if (mTimeStatics != null && !mTimeStatics.isEmpty()) {
+            setVisibility(VISIBLE);
+            invalidate();
+        } else {
+            setVisibility(INVISIBLE);
+        }
     }
+
 
     private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF r = new RectF();
@@ -56,6 +65,11 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
 
             Long valMax = mTimeStatics.values().stream().max((o1, o2) -> (int) (o1 - o2)).get();
             Long valMin = mTimeStatics.values().stream().max((o1, o2) -> (int) (o2 - o1)).get();
+
+            final Long[] sum = {0L};
+            mTimeStatics.values().forEach(aLong -> sum[0] += aLong);
+
+            Log.d("TimeStaticsView", "onDraw: values sum " + sum[0]);
 
             int itemMinLen = (int) (h * 0.2f);
             int itemMaxLen = (int) (h * 0.8f);
@@ -90,6 +104,14 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
 
                 index++;
 
+            }
+
+            if (mTheoreticalTime != 0) {
+                mPaint.setTextAlign(Paint.Align.LEFT);
+                mPaint.setColor(Color.BLUE);
+                Paint.FontMetrics fontMetrics = mPaint.getFontMetrics();
+                float textHeight = fontMetrics.bottom - fontMetrics.top;
+                canvas.drawText("Theoretical request interval:" + mTheoreticalTime + "ms", mLeftPadding, textHeight, mPaint);
             }
         }
     }

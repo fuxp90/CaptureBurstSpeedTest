@@ -221,8 +221,8 @@ public class SpeedTestActivity extends BaseActivity {
                     float fps = total / (time / 1000f);
                     mTestSpeed.setText(getString(R.string.test_result, fps));
 
-
-                    mTimeStaticsView.setTimeStatics(mCameraController.getRequestTimeMap());
+                    mTimeStaticsView.setTimeStatics(mCameraController.getRequestTimeMap(),
+                        captureMode.getTheoreticalTime());
 
                 });
             }
