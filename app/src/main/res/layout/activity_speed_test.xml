@@ -7,6 +7,7 @@
     tools:context=".SpeedTestActivity">
 
     <ScrollView
+        android:layout_above="@id/test_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -192,13 +193,21 @@
                 android:id="@+id/manual_parameter_range"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
+
             <TextView
                 android:id="@+id/manual_current"
-                android:textColor="#B30404"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:textColor="#B30404" />
 
+            <com.cdts.synccapture.TimeStaticsView
+                android:id="@+id/time_statics_view"
+                android:layout_width="match_parent"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_height="200dp" />
         </LinearLayout>
+
     </ScrollView>
 
     <Button

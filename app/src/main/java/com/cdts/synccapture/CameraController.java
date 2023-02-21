@@ -21,7 +21,6 @@ import android.hardware.camera2.params.ColorSpaceTransform;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.RggbChannelVector;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.icu.util.TimeUnit;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
@@ -29,21 +28,20 @@ import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
-import android.util.TimeUtils;
 import android.view.Surface;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.SeekBar;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 
 public class CameraController {
 
@@ -65,7 +63,7 @@ public class CameraController {
     private Status mStatus = Status.Closed;
     private Size mSize;
     private static final int MaxImagesBuffer = 50;
-    private static final int CAPTURE_FPS = 24;
+    private static final int CAPTURE_FPS = 8;
 
     private Capture3AMode m3AMode = Capture3AMode.Manual;
     private final ManualParameter mManualParameter = ManualParameter.getManualParameter();
@@ -98,6 +96,10 @@ public class CameraController {
     public static final long NS = 1000_000_000;
 
     private final Timer[] mTimerArray = new Timer[2];
+
+    private long mRequestTime;
+
+    private final Map<Long, Long> mRequestTimeMap = Collections.synchronizedMap(new TreeMap<>());
 
     public interface OnFmtChangedListener {
         void OnFmtChanged(Context context, Fmt fmt);
@@ -157,16 +159,26 @@ public class CameraController {
     }
 
     public enum CaptureMode {
-        CaptureOneByOne(), CaptureBurst(), CaptureRepeating(), CaptureFixRate(), CaptureMultiThread, CaptureOnAhead;
+        CaptureOneByOne(true),
+        CaptureBurst(false),
+        CaptureRepeating(false),
+        CaptureFixRate(true),
+        CaptureMultiThread(true),
+        CaptureOnAhead(true);
 
         long mStartTime;
         long mEndTime;
         int mCaptureSendNumber;
         int mImageReceivedNumber;
+        final boolean mSupportRecordRequestTimeDelay;
 
         static final int mBurstNumber = 15;
 
         static CameraCallback mCameraCallback;
+
+        CaptureMode(boolean isSupportRecordRequestTimeDelay) {
+            mSupportRecordRequestTimeDelay = isSupportRecordRequestTimeDelay;
+        }
 
         synchronized void addRequestNumber(int num) {
             mCaptureSendNumber += num;
@@ -206,6 +218,10 @@ public class CameraController {
 
         public int getBurstNumber() {
             return mBurstNumber;
+        }
+
+        public boolean isSupportRecordRequestTimeDelay() {
+            return mSupportRecordRequestTimeDelay;
         }
     }
 
@@ -288,6 +304,11 @@ public class CameraController {
                 int send = mCaptureMode == CaptureMode.CaptureBurst ? mCaptureMode.mCaptureSendNumber - CaptureMode.mBurstNumber : mCaptureMode.mCaptureSendNumber;
                 builder.setTag(send + i);
                 requestList.add(builder.build());
+
+                if (mCaptureMode.isSupportRecordRequestTimeDelay()) {
+                    recordRequestTimeDelay();
+                }
+
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
@@ -295,10 +316,15 @@ public class CameraController {
         return requestList;
     }
 
+    public Map<Long, Long> getRequestTimeMap() {
+        return mRequestTimeMap;
+    }
+
     public void stopCaptureBurst() {
         Log.e(TAG, "stopCaptureBurst");
         if (isStatusOf(Status.Capturing)) {
             changeStatus(Status.Idle);
+            mRequestTime = 0;
             mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
             isTestRunning = false;
             checkTestEndCondition();
@@ -476,6 +502,7 @@ public class CameraController {
     public void startCaptureBurst(CaptureMode captureMode) {
         Log.e(TAG, "startCaptureBurst: " + captureMode);
 
+        mRequestTimeMap.clear();
         mCaptureMode = captureMode;
         if (!checkAf()) {
             return;
@@ -546,6 +573,20 @@ public class CameraController {
             } catch (CameraAccessException e) {
                 e.printStackTrace();
                 Log.e(TAG, "startJpegBurstTest: ", e.fillInStackTrace());
+            }
+        }
+    }
+
+    void recordRequestTimeDelay() {
+        long last = mRequestTime;
+        mRequestTime = System.currentTimeMillis();
+        if (last != 0) {
+            long key = mRequestTime - last;
+            Long count = mRequestTimeMap.get(key);
+            if (count == null) {
+                mRequestTimeMap.put(key, 1L);
+            } else {
+                mRequestTimeMap.put(key, ++count);
             }
         }
     }
@@ -890,8 +931,8 @@ public class CameraController {
         @Override
         public String toString() {
             return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange +
-                    ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}'
-                    + "@" + Integer.toHexString(hashCode());
+                ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}'
+                + "@" + Integer.toHexString(hashCode());
         }
 
         public boolean saveInputParameter(View view) {

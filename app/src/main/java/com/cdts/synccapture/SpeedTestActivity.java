@@ -43,6 +43,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mManualParameter;
     private TextView mManualCurrent;
     private TextView m3AMode;
+    private TimeStaticsView mTimeStaticsView;
 
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -54,6 +55,7 @@ public class SpeedTestActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_speed_test);
 
+        mTimeStaticsView = findViewById(R.id.time_statics_view);
         mTestReceive = findViewById(R.id.test_receive);
         mTestSpeed = findViewById(R.id.test_result);
         mTestSend = findViewById(R.id.test_send);
@@ -218,6 +220,9 @@ public class SpeedTestActivity extends BaseActivity {
                     int total = captureMode.mImageReceivedNumber;
                     float fps = total / (time / 1000f);
                     mTestSpeed.setText(getString(R.string.test_result, fps));
+
+
+                    mTimeStaticsView.setTimeStatics(mCameraController.getRequestTimeMap());
 
                 });
             }
