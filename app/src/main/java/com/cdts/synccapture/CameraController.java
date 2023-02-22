@@ -65,6 +65,7 @@ public class CameraController {
     private Size mSize;
     private static final int MaxImagesBuffer = 50;
     private static final int CAPTURE_FPS = 8;
+    private int mJpegQuality = 95;
 
     private Capture3AMode m3AMode = Capture3AMode.Manual;
     private final ManualParameter mManualParameter = ManualParameter.getManualParameter();
@@ -92,6 +93,15 @@ public class CameraController {
     public void setRequestRate(int requestRate) {
         mRequestRate = requestRate;
         Log.d(TAG, "setRequestRate: " + mRequestRate);
+    }
+
+    public int getJpegQuality() {
+        return mJpegQuality;
+    }
+
+    public void setJpegQuality(int jpegQuality) {
+        mJpegQuality = jpegQuality;
+        Log.d(TAG, "setJpegQuality: " + mJpegQuality);
     }
 
     public enum Capture3AMode {
@@ -274,19 +284,20 @@ public class CameraController {
         CameraCharacteristics characteristics = null;
         try {
             characteristics = mManager.getCameraCharacteristics(id);
-            StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            for (Fmt value : Fmt.values()) {
-                Size[] sizes = configurationMap.getOutputSizes(value.mFmt);
-                Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-                value.mSupportSize = Arrays.asList(sizes);
-                Log.d(TAG, id + " " + value + " : " + Arrays.toString(sizes));
+            if (mSize == null) {
+                StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                for (Fmt value : Fmt.values()) {
+                    Size[] sizes = configurationMap.getOutputSizes(value.mFmt);
+                    Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
+                    value.mSupportSize = Arrays.asList(sizes);
+                    Log.d(TAG, id + " " + value + " : " + Arrays.toString(sizes));
+                }
+                mSize = mCaptureFormat.mSupportSize.get(0);
             }
-            mManualParameter.initialize(characteristics);
-            mSize = mCaptureFormat.mSupportSize.get(0);
+            mManualParameter.initialize(mContext, characteristics);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-
     }
 
     public Capture3AMode get3AMode() {
@@ -311,7 +322,7 @@ public class CameraController {
             try {
                 CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
                 builder.addTarget(mImageSurface);
-                builder.set(CaptureRequest.JPEG_QUALITY, (byte) 100);
+                builder.set(CaptureRequest.JPEG_QUALITY, (byte) mJpegQuality);
                 if (m3AMode == Capture3AMode.Auto) {
                     builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
                     builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -380,7 +391,7 @@ public class CameraController {
             int sendNum = (int) request.getTag();
             int q = result.get(CaptureResult.JPEG_QUALITY);
             Log.d(TAG, "onCaptureCompleted sendNum " + sendNum + " timestamp:" + result.get(CaptureResult.SENSOR_TIMESTAMP) + " JPEG_QUALITY:" +
-                q);
+                    q);
         }
     };
 
@@ -732,6 +743,7 @@ public class CameraController {
             return;
         }
 
+        initialized();
         if (isStatusOf(Status.Opening, Status.Closing)) {
             Log.e(TAG, "openCamera refused by error status: " + mStatus);
             return;
@@ -907,7 +919,10 @@ public class CameraController {
             builder.set(CaptureRequest.COLOR_CORRECTION_MODE, mCorrectionMode);
         }
 
-        void initialize(CameraCharacteristics characteristics) {
+        private void initialize(Context context, CameraCharacteristics characteristics) {
+            if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
             if (isInitial) return;
             isInitial = true;
             mExposureTimeRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);

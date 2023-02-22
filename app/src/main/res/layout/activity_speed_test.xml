@@ -86,11 +86,23 @@
 
                 <TextView
                     android:id="@+id/test_fmt"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:gravity="center_vertical"
                     android:text="@string/test_fmt"
+                    android:textSize="@dimen/text_size_15" />
+
+                <TextView
+                    android:id="@+id/test_fmt_param"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/shape_bg"
+                    android:gravity="center_vertical"
+                    android:layout_marginStart="20dp"
+                    android:layout_toEndOf="@id/test_fmt"
+                    android:text="@string/test_fmt_jpeg_qu"
                     android:textSize="@dimen/text_size_15" />
 
                 <ImageView

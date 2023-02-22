@@ -49,6 +49,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView m3AMode;
     private TimeStaticsView mTimeStaticsView;
     private TextView mModeRateView;
+    private TextView mTestJpegQuality;
 
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -78,6 +79,7 @@ public class SpeedTestActivity extends BaseActivity {
         m3AMode = findViewById(R.id.test_3a_mode);
         mManualCurrent = findViewById(R.id.manual_current);
         mModeRateView = findViewById(R.id.test_solution_param);
+        mTestJpegQuality = findViewById(R.id.test_fmt_param);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -92,6 +94,7 @@ public class SpeedTestActivity extends BaseActivity {
                     Toast.makeText(getApplicationContext(), R.string.test_mode_changed, Toast.LENGTH_LONG).show();
                 } else {
                     mCaptureMode = captureMode;
+                    mModeRateView.setVisibility(mCaptureMode.isSupportRecordRequestTimeDelay() ? View.VISIBLE:View.INVISIBLE);
                 }
                 dialog.dismiss();
             });
@@ -226,6 +229,27 @@ public class SpeedTestActivity extends BaseActivity {
             }
         });
 
+        mTestJpegQuality.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCameraController.isTestRunning()) {
+                    Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
+                } else {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
+                    builder.setTitle(R.string.test_fmt_jpeg_quality);
+                    MySeekBar seek = new MySeekBar(getApplicationContext());
+                    seek.setSeekRange(50, 100);
+                    seek.setSeekProgress(mCameraController.getJpegQuality());
+                    seek.setTitle(getString(R.string.test_fmt_jpeg_quality));
+                    seek.setOnSeekBarChangeListener(seekBar -> {
+                        mTestJpegQuality.setText(getString(R.string.test_fmt_jpeg_qu, seekBar.getSeekProgress()));
+                        mCameraController.setJpegQuality(seekBar.getSeekProgress());
+                    });
+                    builder.setView(seek);
+                    builder.show();
+                }
+            }
+        });
         setActionBarTitle(R.string.test_capture_speed);
     }
 
@@ -329,6 +353,8 @@ public class SpeedTestActivity extends BaseActivity {
         if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
             mButton.setEnabled(true);
         }
+        mTestJpegQuality.setText(getString(R.string.test_fmt_jpeg_qu, mCameraController.getJpegQuality()));
+        mTestJpegQuality.setVisibility(mCameraController.getFmt() == CameraController.Fmt.JPEG ? View.VISIBLE : View.INVISIBLE);
         mModeRateView.setText(getString(R.string.test_fix_rate_fpx, mCameraController.getRequestRate()));
         m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();

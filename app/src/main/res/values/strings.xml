@@ -85,4 +85,6 @@
     <string name="reset_3a_auto">Reset 3A Parameter</string>
     <string name="test_image_size_choose">Choose Image Size</string>
     <string name="test_mode_rate">Set Request Rate</string>
+    <string name="test_fmt_jpeg_qu">JpegQuality:%d</string>
+    <string name="test_fmt_jpeg_quality">JpegQuality</string>
 </resources>
