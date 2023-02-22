@@ -1,6 +1,7 @@
 package com.cdts.synccapture;
 
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.media.Image;
 import android.util.Log;
 
@@ -9,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -16,6 +18,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class Storage implements CameraController.OnFmtChangedListener {
 
@@ -106,7 +109,12 @@ public class Storage implements CameraController.OnFmtChangedListener {
         ByteBuffer buffer = plane.getBuffer();
         long timestamp = baseTime <= 0 ? 0 : image.getTimestamp() - baseTime;
         if (saveToFlash) {
-            saveToFlash(buffer, mSavedImageNum, timestamp);
+            int plans = image.getFormat() == ImageFormat.YUV_420_888 ? 2 : 1;
+            ByteBuffer[] buffers = new ByteBuffer[plans];
+            for (int i = 0; i < buffers.length; i++) {
+                buffers[i] = image.getPlanes()[i].getBuffer();
+            }
+            saveToFlash(buffers, mSavedImageNum, timestamp);
         } else {
             mImageBuffer.add(buffer);
             int a = mSavedImageNum.incrementAndGet();
@@ -141,7 +149,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
         mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
     }
 
-    private void saveToFlash(final ByteBuffer data, AtomicInteger num, long timestamp) {
+    private void saveToFlash(final ByteBuffer[] data, AtomicInteger num, long timestamp) {
         mExecutor.execute(new SaveTask(data, num, mDir, timestamp, mOnImageSaveCompleteListener));
     }
 
@@ -150,7 +158,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
         private final AtomicInteger num;
         private final long timestamp;
         private final File mDir;
-        private ByteBuffer buffer;
+        private ByteBuffer[] buffer;
         private final OnImageSaveCompleteListener mOnImageSaveCompleteListener;
 
 
@@ -162,7 +170,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
             mOnImageSaveCompleteListener = onImageSaveCompleteListener;
         }
 
-        public SaveTask(ByteBuffer data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        public SaveTask(ByteBuffer[] data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
             this.buffer = data;
             this.num = num;
             this.timestamp = timestamp;
@@ -185,7 +193,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
                     FileChannel channel = fileOutputStream.getChannel();
                     channel.write(buffer);
                     channel.close();
-                    buffer.clear();
+                    Arrays.stream(buffer).forEach(ByteBuffer::clear);
                 }
                 fileOutputStream.close();
                 successful = true;

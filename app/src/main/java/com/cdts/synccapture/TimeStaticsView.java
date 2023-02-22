@@ -12,7 +12,6 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageView {
     public TimeStaticsView(Context context) {
@@ -29,11 +28,11 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
 
 
     private Map<Long, Long> mTimeStatics;
-    private long mTheoreticalTime;
+    private float mStandard;
 
-    public void setTimeStatics(Map<Long, Long> timeStatics, long theoreticalTime) {
+    public void setTimeStatics(Map<Long, Long> timeStatics, float standard) {
         mTimeStatics = timeStatics;
-        mTheoreticalTime = theoreticalTime;
+        mStandard = standard;
         if (mTimeStatics != null && !mTimeStatics.isEmpty()) {
             setVisibility(VISIBLE);
             invalidate();
@@ -48,6 +47,7 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
     private final static int mLeftPadding = 50;
     private final static int mBottomPadding = 0;
 
+    @SuppressLint("DefaultLocale")
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -116,13 +116,13 @@ public class TimeStaticsView extends androidx.appcompat.widget.AppCompatImageVie
             float textHeight = fontMetrics.bottom - fontMetrics.top;
             mPaint.setTextAlign(Paint.Align.LEFT);
             mPaint.setColor(Color.BLUE);
-            float textY = 0;
-//            if (mTheoreticalTime != 0) {
-//                textY += textHeight;
-//                canvas.drawText("Target Interval:" + mTheoreticalTime + "ms", mLeftPadding, textHeight, mPaint);
-//            }
-            textY += textHeight;
-            canvas.drawText("Min:" + keyMin + "ms" + ",Max:" + keyMax + "ms,Avg:" + keyAvg + "ms", mLeftPadding, textY, mPaint);
+            String text = "Min:" + keyMin + "ms" + ",Max:" + keyMax + "ms,Avg:" + keyAvg + "ms";
+            canvas.drawText(text, mLeftPadding, textHeight, mPaint);
+            mPaint.setColor(Color.RED);
+            if (mStandard > 0) {
+                canvas.drawText("Standard:" + String.format("%.2f", mStandard) + "ms", mPaint.measureText(text) + mLeftPadding + 20, textHeight, mPaint);
+            }
+
         }
     }
 }

@@ -47,12 +47,14 @@
     <string name="mem_info">%s</string>
     <string name="test_choose_fmt">ChooseImageFormat</string>
     <string name="test_StorageImage">Saved Images(%s):%d</string>
+    <string name="test_fix_rate_fpx">Fps:%d</string>
+    <string name="test_fix_request_rate">RequestRate</string>
 
     <string-array name="test_mode_detail">
         <item>RequestOneByOne Detail:\nSend a single request, waiting for received Image(onImageAvailable), then we do next capture</item>
         <item>RequestBurst Detail:\nSend requests list(15) at once, waiting for HAL return all the Image, then we do next capture</item>
         <item>RequestRepeating Detail:\nSend a single request as RepeatingRequest, HAL will continues return the Image until we stop it</item>
-        <item>RequestFixRate Detail:\nSend a single request as Fixed Rate(8fps)</item>
+        <item>RequestFixRate Detail:\nSend a single request as Fixed Rate</item>
         <item>CaptureMultiThread Detail:\nUse 2 threads to send next requests alternately</item>
         <item>CaptureOnAhead Detail:\nAdvance the next request to the onCaptureStart callback</item>
     </string-array>
@@ -81,4 +83,6 @@
     <string name="exposure_time_mic">Fine adjustment</string>
     <string name="save_3a_parameter">Save Current 3A Parameter</string>
     <string name="reset_3a_auto">Reset 3A Parameter</string>
+    <string name="test_image_size_choose">Choose Image Size</string>
+    <string name="test_mode_rate">Set Request Rate</string>
 </resources>

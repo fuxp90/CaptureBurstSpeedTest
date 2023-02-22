@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -78,9 +79,19 @@ public class CameraController {
 
     private int mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
     private Surface mPreviewSurface;
+    private int mRequestRate = CAPTURE_FPS;
 
     public void setPreviewSurface(Surface surface) {
         mPreviewSurface = surface;
+    }
+
+    public int getRequestRate() {
+        return mRequestRate;
+    }
+
+    public void setRequestRate(int requestRate) {
+        mRequestRate = requestRate;
+        Log.d(TAG, "setRequestRate: " + mRequestRate);
     }
 
     public enum Capture3AMode {
@@ -91,7 +102,7 @@ public class CameraController {
         Closed, Closing, Opened, Opening, Configured, Configuring, Capturing, Idle, Error, AFChecking, AFChecked, Previewing
     }
 
-    private OnFmtChangedListener mOnFmtChangedListener;
+    private List<OnFmtChangedListener> mOnFmtChangedListener = new LinkedList<>();
     private Timer mTimer;
     public static final long NS = 1000_000_000;
 
@@ -105,8 +116,14 @@ public class CameraController {
         void OnFmtChanged(Context context, Fmt fmt);
     }
 
-    public void setOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
-        mOnFmtChangedListener = onFmtChangedListener;
+    public void addOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
+        if (!mOnFmtChangedListener.contains(onFmtChangedListener)) {
+            mOnFmtChangedListener.add(onFmtChangedListener);
+        }
+    }
+
+    public void removeOnFmtChangedListener(OnFmtChangedListener onFmtChangedListener) {
+        mOnFmtChangedListener.remove(onFmtChangedListener);
     }
 
     private void changeStatus(Status status) {
@@ -132,10 +149,10 @@ public class CameraController {
     public void setImageFormat(Fmt fmt) {
         if (mCaptureFormat != fmt) {
             mCaptureFormat = fmt;
+            mSize = getImageSupportSize().get(0);
+            Log.d(TAG, "setImageFormat: " + mCaptureFormat + " mSize:" + mSize);
             config();
-            if (mOnFmtChangedListener != null) {
-                mOnFmtChangedListener.OnFmtChanged(mContext, fmt);
-            }
+            mOnFmtChangedListener.forEach(onFmtChangedListener -> onFmtChangedListener.OnFmtChanged(mContext, fmt));
         }
         Log.d(TAG, "setImageFormat: " + fmt);
     }
@@ -149,8 +166,14 @@ public class CameraController {
         JPEG(ImageFormat.JPEG), RAW10(ImageFormat.RAW10), RAW_SENSOR(ImageFormat.RAW_SENSOR), YUV(ImageFormat.YUV_420_888);
         private final int mFmt;
 
+        private List<Size> mSupportSize;
+
         Fmt(int i) {
             mFmt = i;
+        }
+
+        public List<Size> getSupportSize() {
+            return mSupportSize;
         }
 
         public int getFmt() {
@@ -159,12 +182,7 @@ public class CameraController {
     }
 
     public enum CaptureMode {
-        CaptureOneByOne(true),
-        CaptureBurst(false),
-        CaptureRepeating(false),
-        CaptureFixRate(true),
-        CaptureMultiThread(true),
-        CaptureOnAhead(true);
+        CaptureOneByOne(true), CaptureBurst(false), CaptureRepeating(false), CaptureFixRate(true), CaptureMultiThread(true), CaptureOnAhead(true);
 
         long mStartTime;
         long mEndTime;
@@ -224,12 +242,6 @@ public class CameraController {
             return mSupportRecordRequestTimeDelay;
         }
 
-        public long getTheoreticalTime() {
-            if (this == CaptureFixRate) {
-                return 1000 / CAPTURE_FPS;
-            }
-            return 0;
-        }
     }
 
     public interface CameraCallback {
@@ -254,6 +266,27 @@ public class CameraController {
         HandlerThread thread = new HandlerThread("CameraHandler");
         thread.start();
         mHandler = new Handler(thread.getLooper());
+        initialized();
+    }
+
+    private void initialized() {
+        String id = "0";
+        CameraCharacteristics characteristics = null;
+        try {
+            characteristics = mManager.getCameraCharacteristics(id);
+            StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            for (Fmt value : Fmt.values()) {
+                Size[] sizes = configurationMap.getOutputSizes(value.mFmt);
+                Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
+                value.mSupportSize = Arrays.asList(sizes);
+                Log.d(TAG, id + " " + value + " : " + Arrays.toString(sizes));
+            }
+            mManualParameter.initialize(characteristics);
+            mSize = mCaptureFormat.mSupportSize.get(0);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public Capture3AMode get3AMode() {
@@ -264,22 +297,8 @@ public class CameraController {
         return isTestRunning;
     }
 
-    public List<Size> getImageSupportSize(String id) {
-        try {
-            CameraCharacteristics characteristics = mManager.getCameraCharacteristics(id);
-            StreamConfigurationMap configurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            int timestamp_source = characteristics.get(CameraCharacteristics.SENSOR_INFO_TIMESTAMP_SOURCE);
-            Log.e(TAG, "timestamp_source: " + timestamp_source);
-            Size[] sizes = configurationMap.getOutputSizes(mCaptureFormat.mFmt);
-            Arrays.sort(sizes, Comparator.comparingInt(o -> -o.getHeight() * o.getWidth()));
-            Log.d(TAG, id + " " + mCaptureFormat + " : " + Arrays.toString(sizes));
-
-            mManualParameter.initialize(characteristics);
-            return Arrays.asList(sizes);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-        return null;
+    public List<Size> getImageSupportSize() {
+        return mCaptureFormat.getSupportSize();
     }
 
     public ManualParameter getManualParameter() {
@@ -292,7 +311,7 @@ public class CameraController {
             try {
                 CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
                 builder.addTarget(mImageSurface);
-
+                builder.set(CaptureRequest.JPEG_QUALITY, (byte) 100);
                 if (m3AMode == Capture3AMode.Auto) {
                     builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
                     builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -359,7 +378,9 @@ public class CameraController {
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             int sendNum = (int) request.getTag();
-            Log.d(TAG, "onCaptureCompleted sendNum " + sendNum + " timestamp:" + result.get(CaptureResult.SENSOR_TIMESTAMP));
+            int q = result.get(CaptureResult.JPEG_QUALITY);
+            Log.d(TAG, "onCaptureCompleted sendNum " + sendNum + " timestamp:" + result.get(CaptureResult.SENSOR_TIMESTAMP) + " JPEG_QUALITY:" +
+                q);
         }
     };
 
@@ -549,12 +570,12 @@ public class CameraController {
                                     e.printStackTrace();
                                 }
                             }
-                        }, 0, (int) (1000f / CAPTURE_FPS));
+                        }, 0, (int) (1000f / mRequestRate));
                         break;
 
                     case CaptureMultiThread:
                         for (int i = 0; i < mTimerArray.length; i++) {
-                            int period = (int) (1000f / CAPTURE_FPS);
+                            int period = (int) (1000f / mRequestRate);
                             if (mTimerArray[i] != null) {
                                 mTimerArray[i].cancel();
                                 mTimerArray[i] = null;
@@ -695,8 +716,18 @@ public class CameraController {
         return mSize;
     }
 
+    public void setSize(Size size) {
+        if (mSize != null && !mSize.equals(size)) {
+            mSize = size;
+            Log.d(TAG, "setSize: " + mSize);
+            config();
+        }
+    }
+
     public void openCamera(String id, Size size) {
-        mSize = size;
+        if (size != null) {
+            mSize = size;
+        }
         if (mContext.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
@@ -706,9 +737,9 @@ public class CameraController {
             return;
         }
         try {
-
+            Log.d(TAG, "openCamera: " + mSize + " fmt:" + mCaptureFormat + ", mCaptureMode:" + mCaptureMode);
             if (mOnFmtChangedListener != null) {
-                mOnFmtChangedListener.OnFmtChanged(mContext, mCaptureFormat);
+                mOnFmtChangedListener.forEach(onFmtChangedListener -> onFmtChangedListener.OnFmtChanged(mContext, mCaptureFormat));
             }
             changeStatus(Status.Opening);
             mManager.openCamera(id, new CameraDevice.StateCallback() {
@@ -795,6 +826,7 @@ public class CameraController {
             Log.e(TAG, "closeCamera return mCameraDevice :" + null);
             return;
         }
+        mOnFmtChangedListener.clear();
         Log.e(TAG, "closeCamera E: mCameraDevice:" + mCameraDevice);
         changeStatus(Status.Closing);
         mHandler.post(() -> {
@@ -853,6 +885,7 @@ public class CameraController {
 
         Integer mFocusDistanceCalibration;
         String mFocusDistanceCalibrationStr;
+        boolean isInitial = false;
 
         public static ManualParameter getManualParameter() {
             return mManualParameter;
@@ -875,6 +908,8 @@ public class CameraController {
         }
 
         void initialize(CameraCharacteristics characteristics) {
+            if (isInitial) return;
+            isInitial = true;
             mExposureTimeRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
             mSensitivityRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE);
             mFocalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
@@ -937,9 +972,7 @@ public class CameraController {
 
         @Override
         public String toString() {
-            return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange +
-                ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}'
-                + "@" + Integer.toHexString(hashCode());
+            return "ManualParameter{" + "mExposureTime=" + mExposureTime + ", mSensitivity=" + mSensitivity + ", mFocusDistance=" + mFocusDistance + ", mExposureTimeRange=" + mExposureTimeRange + ", mSensitivityRange=" + mSensitivityRange + ", mFocalLengths=" + Arrays.toString(mFocalLengths) + ", mMinFocusDistance=" + mMinFocusDistance + '}' + "@" + Integer.toHexString(hashCode());
         }
 
         public boolean saveInputParameter(View view) {

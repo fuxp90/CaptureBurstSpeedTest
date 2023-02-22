@@ -57,7 +57,6 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
             public void surfaceCreated(@NonNull SurfaceHolder holder) {
                 mCameraController.setPreviewSurface(holder.getSurface());
                 mCameraController.openCamera("0", new Size(1440, 1080));
-                mCameraController.getImageSupportSize("0");
 
                 mExpTimeSeek.setTitle(getString(R.string.exposure_time));
                 mSensitivitySeek.setTitle(getString(R.string.sensitivity));

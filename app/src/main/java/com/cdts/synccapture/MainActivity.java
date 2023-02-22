@@ -2,12 +2,9 @@ package com.cdts.synccapture;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraDevice;
 import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,9 +20,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -63,7 +58,7 @@ public class MainActivity extends BaseActivity {
         mSaveNumber.setText(getString(R.string.save_number, 0));
 
         mCameraController = new CameraController(this);
-        mCameraController.setOnFmtChangedListener(Storage.getStorage());
+        mCameraController.addOnFmtChangedListener(Storage.getStorage());
 
         setActionBarTitle(R.string.app_name);
 
@@ -162,8 +157,7 @@ public class MainActivity extends BaseActivity {
     }
 
     void openCamera() {
-        Size size = mCameraController.getImageSupportSize("0").get(0);
-        mCameraController.openCamera("0", size);
+        mCameraController.openCamera("0", null);
     }
 
     boolean hasCameraPermission() {

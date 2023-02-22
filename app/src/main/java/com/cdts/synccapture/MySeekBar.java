@@ -4,10 +4,6 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.Range;
@@ -16,7 +12,6 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -78,6 +73,19 @@ public class MySeekBar extends LinearLayout {
         void onSeek(MySeekBar seekBar);
     }
 
+    public void setSeekProgress(int progress) {
+        mSeekBar.setProgress(progress);
+    }
+
+    public int getSeekProgress() {
+        return mSeekBar.getProgress();
+    }
+
+    public void setSeekRange(int min, int max) {
+        mSeekBar.setMin(min);
+        mSeekBar.setMax(max);
+    }
+
     private void init() {
         inflate(getContext(), R.layout.layout_seek_bak, this);
         mTitle = findViewById(R.id.title);
@@ -88,15 +96,7 @@ public class MySeekBar extends LinearLayout {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (!fromUser) return;
                 Log.d(TAG, "onProgressChanged: " + progress);
-                if (mLongRange != null) {
-                    @SuppressLint("DefaultLocale") String s = String.format("(%.2fs)", getLongValue() * 1f / CameraController.NS);
-                    mTitle.setText(mTitleStr + ":" + getLongValue() + s);
-                } else if (mIntRange != null) {
-                    mTitle.setText(mTitleStr + ":" + getIntValue());
-                } else {
-                    mTitle.setText(mTitleStr + ":" + getFloatValue());
-                }
-
+                setTitleValue();
                 if (mOnSeekBarChangeListener != null) {
                     mOnSeekBarChangeListener.onSeek(MySeekBar.this);
                 }
@@ -183,6 +183,22 @@ public class MySeekBar extends LinearLayout {
 
     public void setTitle(String title) {
         mTitleStr = title;
+        setTitleValue();
+    }
+
+
+    @SuppressLint("SetTextI18n")
+    private void setTitleValue() {
+        if (mLongRange != null) {
+            @SuppressLint("DefaultLocale") String s = String.format("(%.2fs)", getLongValue() * 1f / CameraController.NS);
+            mTitle.setText(mTitleStr + ":" + getLongValue() + s);
+        } else if (mIntRange != null) {
+            mTitle.setText(mTitleStr + ":" + getIntValue());
+        } else if (mFloatRange != null) {
+            mTitle.setText(mTitleStr + ":" + getFloatValue());
+        } else {
+            mTitle.setText(mTitleStr + ":" + mSeekBar.getProgress());
+        }
     }
 
 }

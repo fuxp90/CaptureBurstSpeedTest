@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.media.Image;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +24,8 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SpeedTestActivity extends BaseActivity {
 
@@ -44,6 +48,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mManualCurrent;
     private TextView m3AMode;
     private TimeStaticsView mTimeStaticsView;
+    private TextView mModeRateView;
 
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -72,6 +77,7 @@ public class SpeedTestActivity extends BaseActivity {
         mManualParameter = findViewById(R.id.manual_parameter_range);
         m3AMode = findViewById(R.id.test_3a_mode);
         mManualCurrent = findViewById(R.id.manual_current);
+        mModeRateView = findViewById(R.id.test_solution_param);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -134,6 +140,28 @@ public class SpeedTestActivity extends BaseActivity {
             }
         });
 
+        findViewById(R.id.test_size_select).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
+                builder.setTitle(R.string.test_image_size_choose);
+                final String[] charSequence = mCameraController.getImageSupportSize().stream().map(size -> size.getWidth() + "x" + size.getHeight()).collect(Collectors.toList()).toArray(new String[1]);
+                int item = mCameraController.getImageSupportSize().indexOf(mCameraController.getSize());
+                builder.setSingleChoiceItems(charSequence, item, (dialog, which) -> {
+                    if (mCameraController.isTestRunning()) {
+                        Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
+                    } else {
+                        String[] s = charSequence[which].split("x");
+                        Size size = new Size(Integer.parseInt(s[0]), Integer.parseInt(s[1]));
+                        mCameraController.setSize(size);
+                        mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()));
+
+                    }
+                    dialog.dismiss();
+                });
+                builder.show();
+            }
+        });
 
         findViewById(R.id.test_3a_mode_select).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -174,6 +202,30 @@ public class SpeedTestActivity extends BaseActivity {
             }
         });
 
+        mModeRateView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCameraController.isTestRunning()) {
+                    Toast.makeText(getApplicationContext(), R.string.test_fmt_changed, Toast.LENGTH_LONG).show();
+                } else {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
+                    builder.setTitle(R.string.test_mode_rate);
+                    MySeekBar seek = new MySeekBar(getApplicationContext());
+                    seek.setSeekRange(1, 30);
+                    seek.setSeekProgress(mCameraController.getRequestRate());
+                    seek.setTitle(getString(R.string.test_fix_request_rate));
+                    seek.setOnSeekBarChangeListener(seekBar -> {
+                        mModeRateView.setText(getString(R.string.test_fix_rate_fpx, seekBar.getSeekProgress()));
+                        mCameraController.setRequestRate(seekBar.getSeekProgress());
+                    });
+                    builder.setView(seek);
+                    builder.show();
+                }
+
+
+            }
+        });
+
         setActionBarTitle(R.string.test_capture_speed);
     }
 
@@ -187,8 +239,15 @@ public class SpeedTestActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         mCameraController = new CameraController(this);
-        mCameraController.setOnFmtChangedListener(Storage.getStorage());
-        mCameraController.openCamera(mCamId, mCameraController.getImageSupportSize(mCamId).get(0));
+        mCameraController.addOnFmtChangedListener(Storage.getStorage());
+        mCameraController.addOnFmtChangedListener(new CameraController.OnFmtChangedListener() {
+            @Override
+            public void OnFmtChanged(Context context, CameraController.Fmt fmt) {
+                Size size = mCameraController.getSize();
+                mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()));
+            }
+        });
+        mCameraController.openCamera(mCamId, null);
         mCameraController.setCameraCallback(new CameraController.CameraCallback() {
             @Override
             public void onCameraOpened(CameraController controller) {
@@ -208,6 +267,7 @@ public class SpeedTestActivity extends BaseActivity {
             public void onTestStart(CameraController.CaptureMode captureSolution, long start) {
                 runOnUiThread(() -> {
                     resetView();
+                    mTimeStaticsView.setTimeStatics(null, 0);
                 });
                 mStorage.resetSaveNum();
                 runOnUiThread(new TimeUpdateRunnable(start));
@@ -221,8 +281,7 @@ public class SpeedTestActivity extends BaseActivity {
                     float fps = total / (time / 1000f);
                     mTestSpeed.setText(getString(R.string.test_result, fps));
 
-                    mTimeStaticsView.setTimeStatics(mCameraController.getRequestTimeMap(),
-                        captureMode.getTheoreticalTime());
+                    mTimeStaticsView.setTimeStatics(mCameraController.getRequestTimeMap(), 1000f / mCameraController.getRequestRate());
 
                 });
             }
@@ -264,14 +323,13 @@ public class SpeedTestActivity extends BaseActivity {
         mTestSpeed.setText(R.string.test_result_unknow);
         mTestReceive.setText(R.string.test_receivedImage_unknow);
         mTestSend.setText(R.string.test_sendRequest_unknow);
-        List<Size> sizes = mCameraController.getImageSupportSize(mCamId);
-        Size size = sizes.get(0);
+        Size size = mCameraController.getSize();
         mTestSize.setText(getString(R.string.test_image_size, size.getWidth() + "x" + size.getHeight()));
         mTestFmt.setText(getString(R.string.test_fmt, mCameraController.getFmt()));
         if (mCameraController.isStatusOf(CameraController.Status.Idle, CameraController.Status.Configured)) {
             mButton.setEnabled(true);
         }
-
+        mModeRateView.setText(getString(R.string.test_fix_rate_fpx, mCameraController.getRequestRate()));
         m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
         mManualParameter.setText(parameter.getDesc(true));
