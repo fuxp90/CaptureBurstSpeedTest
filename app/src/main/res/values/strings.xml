@@ -87,4 +87,5 @@
     <string name="test_mode_rate">Set Request Rate</string>
     <string name="test_fmt_jpeg_qu">JpegQuality:%d</string>
     <string name="test_fmt_jpeg_quality">JpegQuality</string>
+    <string name="awb_title">AWB</string>
 </resources>

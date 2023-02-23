@@ -40,9 +40,6 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
         mExpTimeSeek.setOnSeekBarChangeListener(this);
         mAwbSeek.setOnSeekBarChangeListener(this);
 
-        mAwbSeek.setTitle("AWB");
-        mAwbSeek.setIntRange(new Range<>(-50, 50));
-        mAwbSeek.setValue(0);
 
         findViewById(R.id.save_3a_parameter).setOnClickListener(v -> {
 
@@ -51,6 +48,7 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
             p.mExposureTime = mExpTimeSeek.getLongValue();
             p.mFocusDistance = mFocusSeek.getFloatValue();
             p.mSensitivity = mSensitivitySeek.getIntValue();
+            p.mAwbAdjust = mAwbSeek.getIntValue();
 
             Log.d(TAG, "save_3a_parameter: " + p);
             finish();
@@ -71,11 +69,14 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
                 mExpTimeSeek.setTitle(getString(R.string.exposure_time));
                 mSensitivitySeek.setTitle(getString(R.string.sensitivity));
                 mFocusSeek.setTitle(getString(R.string.focus_distance));
+                mAwbSeek.setTitle(getString(R.string.awb_title));
 
                 CameraController.ManualParameter parameter = mCameraController.getManualParameter();
                 mExpTimeSeek.setLongRange(new Range<>(parameter.mExposureTimeRange.getLower(), CameraController.NS / 5));
                 mSensitivitySeek.setIntRange(parameter.mSensitivityRange);
                 mFocusSeek.setFloatRange(new Range<>(0f, parameter.mMinFocusDistance));
+                mAwbSeek.setIntRange(new Range<>(-50, 50));
+                mAwbSeek.setValue(0);
 
             }
 
@@ -107,8 +108,7 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
     public void onSeek(MySeekBar seekBar) {
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
         if (seekBar == mAwbSeek) {
-            int v = seekBar.getIntValue();
-            parameter.getAwbColorCompensationRggbVector(v);
+            parameter.mAwbAdjust = seekBar.getIntValue();
         } else {
             float f1 = seekBar.getFloatValue();
             long l1 = seekBar.getLongValue();
