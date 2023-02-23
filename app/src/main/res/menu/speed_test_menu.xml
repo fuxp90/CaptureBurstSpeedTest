@@ -3,5 +3,10 @@
     <item
         android:id="@+id/clear_current_fmt_image"
         android:title="@string/clear_image" />
-
+    <item
+        android:id="@+id/test_audio_time_sync"
+        android:title="@string/test_audio_time_sync" />
+    <item
+        android:id="@+id/about"
+        android:title="@string/app_about" />
 </menu>

@@ -1,7 +1,9 @@
 package com.cdts.synccapture;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -55,6 +57,9 @@ public class SpeedTestActivity extends BaseActivity {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Storage mStorage = Storage.getStorage();
     private CameraController.CaptureMode mCaptureMode = CameraController.CaptureMode.CaptureFixRate;
+    private static final int TIME_SYNC_REQ_CODE = 0xfff;
+    private long mImageBaseTime;
+    private TextView mBaseTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,6 +85,7 @@ public class SpeedTestActivity extends BaseActivity {
         mManualCurrent = findViewById(R.id.manual_current);
         mModeRateView = findViewById(R.id.test_solution_param);
         mTestJpegQuality = findViewById(R.id.test_fmt_param);
+        mBaseTime = findViewById(R.id.test_base_time);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -94,7 +100,7 @@ public class SpeedTestActivity extends BaseActivity {
                     Toast.makeText(getApplicationContext(), R.string.test_mode_changed, Toast.LENGTH_LONG).show();
                 } else {
                     mCaptureMode = captureMode;
-                    mModeRateView.setVisibility(mCaptureMode.isSupportRecordRequestTimeDelay() ? View.VISIBLE:View.INVISIBLE);
+                    mModeRateView.setVisibility(mCaptureMode.isSupportRecordRequestTimeDelay() ? View.VISIBLE : View.INVISIBLE);
                 }
                 dialog.dismiss();
             });
@@ -260,8 +266,35 @@ public class SpeedTestActivity extends BaseActivity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (hasCameraPermission()) {
+            // onResume();
+        } else {
+            Toast.makeText(this, "Please give Permissions", Toast.LENGTH_LONG).show();
+            finish();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == TIME_SYNC_REQ_CODE && resultCode == RESULT_OK) {
+            assert data != null;
+            mImageBaseTime = data.getLongExtra("base_time", 0);
+            mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+
+        if (!hasCameraPermission()) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, 0xff);
+            return;
+        }
+
         mCameraController = new CameraController(this);
         mCameraController.addOnFmtChangedListener(Storage.getStorage());
         mCameraController.addOnFmtChangedListener(new CameraController.OnFmtChangedListener() {
@@ -365,13 +398,16 @@ public class SpeedTestActivity extends BaseActivity {
             mManualCurrent.setVisibility(View.VISIBLE);
             mManualCurrent.setText(parameter.getCurrentDesc());
         }
+        mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mCameraController.stopCaptureBurst();
-        mCameraController.closeCamera();
+        if (mCameraController != null) {
+            mCameraController.stopCaptureBurst();
+            mCameraController.closeCamera();
+        }
     }
 
     @Override
@@ -420,6 +456,18 @@ public class SpeedTestActivity extends BaseActivity {
                 }
 
                 break;
+            case R.id.test_audio_time_sync: {
+                Intent intent = new Intent(this, TimeSyncActivity.class);
+                startActivityForResult(intent, TIME_SYNC_REQ_CODE);
+            }
+            break;
+            case R.id.about: {
+                AlertDialog aboutDialog = new AlertDialog.Builder(this).create();
+                aboutDialog.setTitle(R.string.app_name);
+                aboutDialog.setMessage("Build date:" + BuildConfig.VERSION_NAME);
+                aboutDialog.show();
+            }
+            break;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -444,7 +492,7 @@ public class SpeedTestActivity extends BaseActivity {
                 mDate.setTime(time);
                 String str = mSimpleDateFormat.format(mDate);
                 mTestTime.setText(getString(R.string.test_time) + str);
-                mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
+                //mMemInfo.setText(getString(R.string.mem_info, getMaxMemoryInfo()));
                 mHandler.postDelayed(this, 1000);
             }
         }

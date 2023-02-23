@@ -3,10 +3,5 @@
     <item
         android:id="@+id/test_capture_speed"
         android:title="@string/test_capture_speed" />
-    <item
-        android:id="@+id/test_audio_time_sync"
-        android:title="@string/test_audio_time_sync" />
-    <item
-        android:id="@+id/about"
-        android:title="@string/app_about" />
+
 </menu>

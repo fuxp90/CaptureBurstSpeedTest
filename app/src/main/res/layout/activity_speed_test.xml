@@ -165,6 +165,14 @@
             </RelativeLayout>
 
             <TextView
+                android:id="@+id/test_base_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:text="@string/base_time"
+                android:textSize="@dimen/text_size_15" />
+
+            <TextView
                 android:id="@+id/test_time"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
