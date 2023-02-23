@@ -21,6 +21,7 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
     private MySeekBar mExpTimeSeek;
     private MySeekBar mSensitivitySeek;
     private MySeekBar mFocusSeek;
+    private MySeekBar mAwbSeek;
 
     private static final String TAG = "ManualActivity";
 
@@ -33,9 +34,15 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
         mExpTimeSeek = findViewById(R.id.exposure_time_seek);
         mSensitivitySeek = findViewById(R.id.sensitivity_seek);
         mFocusSeek = findViewById(R.id.focus_seek);
+        mAwbSeek = findViewById(R.id.awb_seek);
         mFocusSeek.setOnSeekBarChangeListener(this);
         mSensitivitySeek.setOnSeekBarChangeListener(this);
         mExpTimeSeek.setOnSeekBarChangeListener(this);
+        mAwbSeek.setOnSeekBarChangeListener(this);
+
+        mAwbSeek.setTitle("AWB");
+        mAwbSeek.setIntRange(new Range<>(-50, 50));
+        mAwbSeek.setValue(0);
 
         findViewById(R.id.save_3a_parameter).setOnClickListener(v -> {
 
@@ -49,7 +56,10 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
             finish();
         });
 
-        findViewById(R.id.reset_to_auto).setOnClickListener(v -> mCameraController.startPreview(ManualActivity.this));
+        findViewById(R.id.reset_to_auto).setOnClickListener(v -> {
+            mAwbSeek.setValue(0);
+            mCameraController.startPreview(ManualActivity.this);
+        });
 
         mSurfaceView = findViewById(R.id.preview);
         mSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
@@ -96,13 +106,17 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
     @Override
     public void onSeek(MySeekBar seekBar) {
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
-        float f1 = seekBar.getFloatValue();
-        long l1 = seekBar.getLongValue();
-        int i1 = seekBar.getIntValue();
-        if (f1 > 0) parameter.mFocusDistance = f1;
-        if (l1 > 0) parameter.mExposureTime = seekBar.getLongValue();
-        if (i1 > 0) parameter.mSensitivity = seekBar.getIntValue();
-
+        if (seekBar == mAwbSeek) {
+            int v = seekBar.getIntValue();
+            parameter.getAwbColorCompensationRggbVector(v);
+        } else {
+            float f1 = seekBar.getFloatValue();
+            long l1 = seekBar.getLongValue();
+            int i1 = seekBar.getIntValue();
+            if (f1 > 0) parameter.mFocusDistance = f1;
+            if (l1 > 0) parameter.mExposureTime = seekBar.getLongValue();
+            if (i1 > 0) parameter.mSensitivity = seekBar.getIntValue();
+        }
         Log.d(TAG, "onSeek: " + parameter);
         mCameraController.update3AParameter();
     }

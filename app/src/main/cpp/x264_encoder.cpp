@@ -5,7 +5,10 @@
 #include "libs/include/x264_config.h"
 #include "ALog.h"
 
+#include <android/imagedecoder.h>
+
 
 int main() {
+
     return 0;
 }

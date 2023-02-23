@@ -391,7 +391,7 @@ public class CameraController {
             int sendNum = (int) request.getTag();
             int q = result.get(CaptureResult.JPEG_QUALITY);
             Log.d(TAG, "onCaptureCompleted sendNum " + sendNum + " timestamp:" + result.get(CaptureResult.SENSOR_TIMESTAMP) + " JPEG_QUALITY:" +
-                    q);
+                q);
         }
     };
 
@@ -474,38 +474,9 @@ public class CameraController {
                     mManualParameter.mSensitivity = result.get(CaptureResult.SENSOR_SENSITIVITY);
                     mManualParameter.mFocusDistance = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
                     int awb = result.get(CaptureResult.CONTROL_AWB_STATE);
-                    if (awb == CaptureResult.CONTROL_AWB_STATE_CONVERGED) {
-                        CaptureRequest.Builder builder = null;
-                        try {
-                            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-                            builder.addTarget(mPreviewSurface);
-                            builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
-                            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-                            builder.set(CaptureRequest.CONTROL_AWB_LOCK, true);
-                            builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-
-                            mCameraSession.setRepeatingRequest(builder.build(), new CameraCaptureSession.CaptureCallback() {
-                                @Override
-                                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
-                                    super.onCaptureCompleted(session, request, result);
-                                    int awb = result.get(CaptureResult.CONTROL_AWB_STATE);
-                                    mManualParameter.mExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
-                                    mManualParameter.mSensitivity = result.get(CaptureResult.SENSOR_SENSITIVITY);
-                                    mManualParameter.mFocusDistance = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
-
-                                    if (awb == CaptureResult.CONTROL_AWB_STATE_LOCKED) {
-                                        mManualParameter.saveAwbParameter(result);
-                                    }
-
-                                    if (listener != null) {
-                                        listener.onManual3AChanged(mManualParameter);
-                                    }
-                                }
-                            }, mHandler);
-                        } catch (CameraAccessException e) {
-                            e.printStackTrace();
-                        }
-
+                    if (awb == CaptureResult.CONTROL_AWB_STATE_CONVERGED ||
+                        awb == CaptureResult.CONTROL_AWB_STATE_LOCKED) {
+                        mManualParameter.saveAwbParameter(result);
                     }
                     if (listener != null) {
                         listener.onManual3AChanged(mManualParameter);
@@ -528,10 +499,10 @@ public class CameraController {
             builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
             builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
             builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF);
-            mManualParameter.restoreAwbParameter(builder);
             builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, mManualParameter.mExposureTime);
             builder.set(CaptureRequest.SENSOR_SENSITIVITY, mManualParameter.mSensitivity);
             builder.set(CaptureRequest.LENS_FOCUS_DISTANCE, mManualParameter.mFocusDistance);
+            mManualParameter.restoreAwbParameter(builder);
             mCameraSession.setRepeatingRequest(builder.build(), null, mHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -888,6 +859,7 @@ public class CameraController {
         public MeteringRectangle[] mAwbMeteringRectangles;
         private int mAwbAberrationMode;
         private RggbChannelVector mAwbColorCorrectionGains;
+        private RggbChannelVector mAwbColorCorrectionGainsAdjust;
         private ColorSpaceTransform mAwbColorSpaceTransform;
         private int mCorrectionMode;
 
@@ -911,10 +883,24 @@ public class CameraController {
             mCorrectionMode = result.get(CaptureResult.COLOR_CORRECTION_MODE);
         }
 
+        public RggbChannelVector getAwbColorCompensationRggbVector(int compensation_value) {
+            if (mAwbColorCorrectionGains == null) return null;
+            float new_r_gain = mAwbColorCorrectionGains.getRed() + (compensation_value * 0.01f);
+            float new_g_even_gain = mAwbColorCorrectionGains.getGreenEven();
+            float new_g_odd_gain = mAwbColorCorrectionGains.getGreenOdd();
+            float new_b_gain = mAwbColorCorrectionGains.getBlue() - (compensation_value * 0.01f);
+            mAwbColorCorrectionGainsAdjust = new RggbChannelVector(new_r_gain, new_g_even_gain, new_g_odd_gain, new_b_gain);
+            return mAwbColorCorrectionGainsAdjust;
+        }
+
         void restoreAwbParameter(CaptureRequest.Builder builder) {
             builder.set(CaptureRequest.CONTROL_AWB_REGIONS, mAwbMeteringRectangles);
             builder.set(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE, mAwbAberrationMode);
-            builder.set(CaptureRequest.COLOR_CORRECTION_GAINS, mAwbColorCorrectionGains);
+            if (mAwbColorCorrectionGainsAdjust != null) {
+                builder.set(CaptureRequest.COLOR_CORRECTION_GAINS, mAwbColorCorrectionGainsAdjust);
+            } else {
+                builder.set(CaptureRequest.COLOR_CORRECTION_GAINS, mAwbColorCorrectionGains);
+            }
             builder.set(CaptureRequest.COLOR_CORRECTION_TRANSFORM, mAwbColorSpaceTransform);
             builder.set(CaptureRequest.COLOR_CORRECTION_MODE, mCorrectionMode);
         }
@@ -963,6 +949,7 @@ public class CameraController {
                 builder.append("ManualFocusDistance:").append(mFocusDistance).append("\n");
             return builder.toString();
         }
+
 
         public String getDesc(boolean is3AAuto) {
 

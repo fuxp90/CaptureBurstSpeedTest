@@ -49,7 +49,7 @@ public class MySeekBar extends LinearLayout {
 
     @SuppressLint("SetTextI18n")
     public void setValue(long value) {
-        int p = (int) (value * 100f / (mLongRange.getUpper() - mLongRange.getLower()));
+        int p = (int) ((value - mLongRange.getLower()) * 100f / (mLongRange.getUpper() - mLongRange.getLower()));
         mSeekBar.setProgress(p);
         @SuppressLint("DefaultLocale") String s = String.format("(%.2fs)", value * 1f / CameraController.NS);
         mTitle.setText(mTitleStr + ":" + value + s);
@@ -57,14 +57,14 @@ public class MySeekBar extends LinearLayout {
 
     @SuppressLint("SetTextI18n")
     public void setValue(int value) {
-        int p = (int) (value * 100f / (mIntRange.getUpper() - mIntRange.getLower()));
+        int p = (int) ((value - mIntRange.getLower()) * 100f / (mIntRange.getUpper() - mIntRange.getLower()));
         mSeekBar.setProgress(p);
         mTitle.setText(mTitleStr + ":" + value);
     }
 
     @SuppressLint("SetTextI18n")
     public void setValue(float value) {
-        int p = (int) (value * 100 / (mFloatRange.getUpper() - mFloatRange.getLower()));
+        int p = (int) ((value - mFloatRange.getLower()) * 100 / (mFloatRange.getUpper() - mFloatRange.getLower()));
         mSeekBar.setProgress(p);
         mTitle.setText(mTitleStr + ":" + value);
     }

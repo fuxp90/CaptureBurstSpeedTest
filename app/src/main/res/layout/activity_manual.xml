@@ -30,6 +30,12 @@
         android:layout_height="wrap_content"
         android:background="#1113BF00" />
 
+    <com.cdts.synccapture.MySeekBar
+        android:id="@+id/awb_seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1100BFB9" />
+
     <Button
         android:id="@+id/reset_to_auto"
         android:layout_marginTop="50dp"
