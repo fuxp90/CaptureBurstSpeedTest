@@ -7,17 +7,21 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.media.Image;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Size;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,6 +56,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TimeStaticsView mTimeStaticsView;
     private TextView mModeRateView;
     private TextView mTestJpegQuality;
+    private TextView mDeviceName;
 
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -64,6 +69,7 @@ public class SpeedTestActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Utils.initSpf(this);
         setContentView(R.layout.activity_speed_test);
 
         mTimeStaticsView = findViewById(R.id.time_statics_view);
@@ -86,6 +92,7 @@ public class SpeedTestActivity extends BaseActivity {
         mModeRateView = findViewById(R.id.test_solution_param);
         mTestJpegQuality = findViewById(R.id.test_fmt_param);
         mBaseTime = findViewById(R.id.test_base_time);
+        mDeviceName = findViewById(R.id.device_name);
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -399,6 +406,7 @@ public class SpeedTestActivity extends BaseActivity {
             mManualCurrent.setText(parameter.getCurrentDesc());
         }
         mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
+        mDeviceName.setText(getString(R.string.device_name, Utils.getSpf(Utils.KEY_DEVICE_NAME, Utils.DEF_DEVICE_NAME)));
     }
 
     @Override
@@ -466,6 +474,29 @@ public class SpeedTestActivity extends BaseActivity {
                 aboutDialog.setTitle(R.string.app_name);
                 aboutDialog.setMessage("Build date:" + BuildConfig.VERSION_NAME);
                 aboutDialog.show();
+            }
+            break;
+            case R.id.set_device_name: {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.set_device_name);
+                EditText editText = new EditText(this);
+                editText.setText(Utils.getSpf(Utils.KEY_DEVICE_NAME, Utils.DEF_DEVICE_NAME));
+                builder.setView(editText);
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String name = editText.getText().toString();
+                        if (!TextUtils.isEmpty(name)) {
+                            Utils.putSpf(Utils.KEY_DEVICE_NAME, name);
+                            mDeviceName.setText(getString(R.string.device_name, name));
+                        }
+                    }
+                }).show();
             }
             break;
         }

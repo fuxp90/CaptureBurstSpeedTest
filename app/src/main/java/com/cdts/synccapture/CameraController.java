@@ -67,7 +67,7 @@ public class CameraController {
     private static final int CAPTURE_FPS = 8;
     private int mJpegQuality = 95;
 
-    private Capture3AMode m3AMode = Capture3AMode.Manual;
+    private Capture3AMode m3AMode = Capture3AMode.Auto;
     private final ManualParameter mManualParameter = ManualParameter.getManualParameter();
 
     public CaptureMode getCaptureMode() {

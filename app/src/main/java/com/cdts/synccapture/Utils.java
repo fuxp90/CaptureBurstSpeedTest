@@ -1,8 +1,15 @@
 package com.cdts.synccapture;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Build;
 import android.text.TextUtils;
 
 public class Utils {
+
+    public static final String KEY_DEVICE_NAME = "key_device_name";
+
+    public static final String DEF_DEVICE_NAME = Build.BRAND + "_" + Build.MODEL + "_" + Build.BOARD;
 
     public static <E extends Enum<E>> String[] toStringArray(Enum<E>[] es) {
         String[] arr = new String[es.length];
@@ -29,4 +36,23 @@ public class Utils {
         }
         return -1;
     }
+
+
+    private static SharedPreferences mPreferences;
+
+    public static void initSpf(Context context) {
+        if (mPreferences == null) {
+            mPreferences = context.getSharedPreferences("sync_config", Context.MODE_PRIVATE);
+        }
+    }
+
+    public static String getSpf(String key, String val) {
+        return mPreferences.getString(key, val);
+    }
+
+    public static void putSpf(String key, String val) {
+        mPreferences.edit().putString(key, val).commit();
+
+    }
+
 }

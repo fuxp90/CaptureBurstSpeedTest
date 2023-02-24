@@ -6,6 +6,11 @@
     <item
         android:id="@+id/test_audio_time_sync"
         android:title="@string/test_audio_time_sync" />
+
+    <item
+        android:id="@+id/set_device_name"
+        android:title="@string/set_device_name" />
+
     <item
         android:id="@+id/about"
         android:title="@string/app_about" />

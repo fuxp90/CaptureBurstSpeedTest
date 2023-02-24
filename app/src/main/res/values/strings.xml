@@ -88,4 +88,6 @@
     <string name="test_fmt_jpeg_qu">JpegQuality:%d</string>
     <string name="test_fmt_jpeg_quality">JpegQuality</string>
     <string name="awb_title">AWB</string>
+    <string name="set_device_name">Set Device Name</string>
+    <string name="device_name">DeviceName:%s</string>
 </resources>
