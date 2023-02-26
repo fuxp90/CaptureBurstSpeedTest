@@ -10,10 +10,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.media.Image;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Size;
@@ -22,15 +22,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.cdts.beans.Command;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class SpeedTestActivity extends BaseActivity {
@@ -66,11 +65,18 @@ public class SpeedTestActivity extends BaseActivity {
     private long mImageBaseTime;
     private TextView mBaseTime;
 
+    private PowerManager.WakeLock mWakeLock;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Utils.initSpf(this);
         setContentView(R.layout.activity_speed_test);
+
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
+        mWakeLock.setReferenceCounted(false);
+        mWakeLock.acquire(10 * 60 * 1000L /*10 minutes*/);
 
         mTimeStaticsView = findViewById(R.id.time_statics_view);
         mTestReceive = findViewById(R.id.test_receive);
@@ -264,7 +270,9 @@ public class SpeedTestActivity extends BaseActivity {
             }
         });
         setActionBarTitle(R.string.test_capture_speed);
+
     }
+
 
     boolean isStorageComplete() {
         if (mStorage.getSaveType() == Storage.SaveType.RAM) return true;
@@ -290,6 +298,24 @@ public class SpeedTestActivity extends BaseActivity {
             assert data != null;
             mImageBaseTime = data.getLongExtra("base_time", 0);
             mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mWakeLock != null) {
+            mWakeLock.release();
+        }
+    }
+
+    @Override
+    public void onCommandReceived(Command command) {
+        switch (command.getCmd()) {
+            case Command.audio_sync_start:
+                Intent intent = new Intent(getApplicationContext(), TimeSyncActivity.class);
+                startActivityForResult(intent, TIME_SYNC_REQ_CODE);
+                break;
         }
     }
 

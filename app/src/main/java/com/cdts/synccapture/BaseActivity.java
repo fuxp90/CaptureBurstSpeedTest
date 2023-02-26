@@ -3,6 +3,7 @@ package com.cdts.synccapture;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,7 +12,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class BaseActivity extends AppCompatActivity {
+import com.cdts.beans.Command;
+
+public class BaseActivity extends AppCompatActivity implements UdpClient.OnCommandReceivedListener {
 
     private final static String TAG = "BaseActivity";
     private final static long MemMB = 1024 * 1024;
@@ -20,6 +23,7 @@ public class BaseActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: " + this);
+        UdpClient.getInstance(getApplicationContext()).start();
     }
 
     public void setActionBarTitle(int title) {
@@ -32,6 +36,7 @@ public class BaseActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        UdpClient.getInstance(getApplicationContext()).setListener(this);
         Log.d(TAG, "onResume: " + this);
     }
 
@@ -49,6 +54,10 @@ public class BaseActivity extends AppCompatActivity {
 
     boolean hasCameraPermission() {
         return checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onCommandReceived(Command command) {
     }
 
     public String getMaxMemoryInfo() {

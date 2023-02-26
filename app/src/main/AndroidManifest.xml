@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
 
     <application
         android:allowBackup="true"
@@ -12,16 +15,16 @@
         android:icon="@mipmap/ic_launcher"
         android:keepScreenOn="true"
         android:label="@string/app_name"
+        android:largeHeap="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:largeHeap="true"
         android:theme="@style/Theme.BurstSpeedTest"
         tools:targetApi="31">
         <activity
             android:name=".SpeedTestActivity"
+            android:exported="true"
             android:keepScreenOn="true"
-            android:launchMode="singleTop"
-            android:exported="true">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -30,10 +33,10 @@
         </activity>
         <activity
             android:name=".TimeSyncActivity"
-            android:keepScreenOn="true"
             android:exported="true"
+            android:keepScreenOn="true"
             android:launchMode="singleTop" />
-        <activity android:name=".ManualActivity"/>
+        <activity android:name=".ManualActivity" />
     </application>
 
 </manifest>

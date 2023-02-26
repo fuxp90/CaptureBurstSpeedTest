@@ -14,6 +14,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.cdts.beans.Command;
+
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 
@@ -98,6 +100,15 @@ public class TimeSyncActivity extends BaseActivity {
             ActivityCompat.requestPermissions(this, PERMISSION, 0xff);
         }
 
+    }
+
+    @Override
+    public void onCommandReceived(Command command) {
+        switch (command.getCmd()) {
+            case Command.audio_sync_stop:
+                findViewById(R.id.time_sync_finish).callOnClick();
+                break;
+        }
     }
 
     @Override
