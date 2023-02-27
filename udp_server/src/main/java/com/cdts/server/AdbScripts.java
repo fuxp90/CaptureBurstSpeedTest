@@ -50,4 +50,8 @@ public class AdbScripts {
         ret.addAll(list2);
         return ret;
     }
+
+    public static List<String> pullImages(DeviceBean bean) {
+        return AShell.exec(bean.getAdbCmd(ADB_PULL_IMAGES, "images"));
+    }
 }

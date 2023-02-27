@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+udp_server/build/
+/udp_server/build/
+udp_server/.idea/
+/udp_server/.idea/

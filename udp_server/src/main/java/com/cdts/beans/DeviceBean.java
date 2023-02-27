@@ -1,5 +1,6 @@
 package com.cdts.beans;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DeviceBean {
@@ -15,7 +16,9 @@ public class DeviceBean {
     }
 
     public String getAdbCmd(String adb, String... args) {
-        List<String> list = new java.util.ArrayList<>(List.of(args));
+        List<String> list = new ArrayList<>();
+        for (String a : args)
+            list.add(a);
         list.add(0, mSerial);
         return String.format(adb, list.toArray());
     }

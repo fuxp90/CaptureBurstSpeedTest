@@ -3,15 +3,20 @@ package com.cdts.beans;
 import java.io.Serializable;
 
 public class ParamBean implements Serializable {
+
     private boolean mClearLocalCache = true;
-    private long mExposure = 3;
-    private int mIso;
-    private float mFocusDistance;
-    private int mFrameRate;
-    private int mFrameType;
-    private int mWhiteBalanceOffset;
-    private boolean mForceAutoWhiteBalanceCheck;
-    private String mNameOfUpcoming;
+    private long mExposure = 10000000;
+    private int mIso = 444;
+    private float mFocusDistance = 0;
+    private int mFrameRate = 8;
+    private int mImageFormat = 0;/*JPEG-0,RAW10-2,RAW_SENOR-3,YUV_420_888-3*/
+    private int mWhiteBalanceOffset = 0;
+    private boolean mForceAutoWhiteBalanceCheck = false;
+    private String mNameOfUpcoming = "TestA";
+    private int mSaveType = 0; /*FLASH-0, RAM-1*/
+    private boolean isAuto3a;
+    private String mImageSize = "4000*3000";
+
 
     public boolean isClearLocalCache() {
         return mClearLocalCache;
@@ -53,12 +58,12 @@ public class ParamBean implements Serializable {
         mFrameRate = frameRate;
     }
 
-    public int getFrameType() {
-        return mFrameType;
+    public int getImageFormat() {
+        return mImageFormat;
     }
 
-    public void setFrameType(int frameType) {
-        mFrameType = frameType;
+    public void setImageFormat(int frameType) {
+        mImageFormat = frameType;
     }
 
     public int getWhiteBalanceOffset() {
@@ -85,6 +90,35 @@ public class ParamBean implements Serializable {
         mNameOfUpcoming = nameOfUpcoming;
     }
 
+    public void setSaveType(int i) {
+        mSaveType = i;
+    }
+
+    public int getSaveType() {
+        return mSaveType;
+    }
+
+    public void setAuto3a(boolean auto3a) {
+        isAuto3a = auto3a;
+    }
+
+    public boolean isAuto3a() {
+        return isAuto3a;
+    }
+
+    public void setAuto3A(boolean i) {
+        isAuto3a = i;
+    }
+
+    public void setImageSize(String text) {
+        mImageSize = text;
+    }
+
+    public String getImageSize() {
+        return mImageSize;
+    }
+
+
     @Override
     public String toString() {
         return "ParamBean{" +
@@ -93,10 +127,13 @@ public class ParamBean implements Serializable {
                 ", mIso=" + mIso +
                 ", mFocusDistance=" + mFocusDistance +
                 ", mFrameRate=" + mFrameRate +
-                ", mFrameType=" + mFrameType +
+                ", mImageFormat=" + mImageFormat +
                 ", mWhiteBalanceOffset=" + mWhiteBalanceOffset +
                 ", mForceAutoWhiteBalanceCheck=" + mForceAutoWhiteBalanceCheck +
                 ", mNameOfUpcoming='" + mNameOfUpcoming + '\'' +
+                ", mSaveType=" + mSaveType +
+                ", isAuto3a=" + isAuto3a +
+                ", mImageSize='" + mImageSize + '\'' +
                 '}';
     }
 }
