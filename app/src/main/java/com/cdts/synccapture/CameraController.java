@@ -67,7 +67,7 @@ public class CameraController {
     private static final int CAPTURE_FPS = 8;
     private int mJpegQuality = 95;
 
-    private Capture3AMode m3AMode = Capture3AMode.Auto;
+    private static Capture3AMode m3AMode = Capture3AMode.Auto;
     private final ManualParameter mManualParameter = ManualParameter.getManualParameter();
 
     public CaptureMode getCaptureMode() {
@@ -168,8 +168,8 @@ public class CameraController {
     }
 
 
-    public void set3AMode(Capture3AMode m3AMode) {
-        this.m3AMode = m3AMode;
+    public static void set3AMode(Capture3AMode mode) {
+        m3AMode = mode;
     }
 
     public enum Fmt {
@@ -300,7 +300,7 @@ public class CameraController {
         }
     }
 
-    public Capture3AMode get3AMode() {
+    public static Capture3AMode get3AMode() {
         return m3AMode;
     }
 

@@ -199,12 +199,10 @@ public class SpeedTestActivity extends BaseActivity {
                         CameraController.Capture3AMode mode = CameraController.Capture3AMode.valueOf(charSequence[which]);
 
                         if (mode == CameraController.Capture3AMode.Manual) {
-
                             Intent intent = new Intent(getApplication(), ManualActivity.class);
                             startActivityForResult(intent, 0x123);
-
                         } else {
-                            mCameraController.set3AMode(mode);
+                            CameraController.set3AMode(mode);
                             resetView();
                         }
                     }
@@ -422,10 +420,10 @@ public class SpeedTestActivity extends BaseActivity {
         mTestJpegQuality.setText(getString(R.string.test_fmt_jpeg_qu, mCameraController.getJpegQuality()));
         mTestJpegQuality.setVisibility(mCameraController.getFmt() == CameraController.Fmt.JPEG ? View.VISIBLE : View.INVISIBLE);
         mModeRateView.setText(getString(R.string.test_fix_rate_fpx, mCameraController.getRequestRate()));
-        m3AMode.setText(getString(R.string.test_3a_mode, mCameraController.get3AMode()));
+        m3AMode.setText(getString(R.string.test_3a_mode, CameraController.get3AMode()));
         CameraController.ManualParameter parameter = mCameraController.getManualParameter();
         mManualParameter.setText(parameter.getDesc(true));
-        if (mCameraController.get3AMode() == CameraController.Capture3AMode.Auto) {
+        if (CameraController.get3AMode() == CameraController.Capture3AMode.Auto) {
             mManualCurrent.setVisibility(View.GONE);
         } else {
             mManualCurrent.setVisibility(View.VISIBLE);

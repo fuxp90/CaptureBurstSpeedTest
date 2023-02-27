@@ -49,7 +49,7 @@ public class ManualActivity extends BaseActivity implements MySeekBar.OnSeekBarC
             p.mFocusDistance = mFocusSeek.getFloatValue();
             p.mSensitivity = mSensitivitySeek.getIntValue();
             p.mAwbAdjust = mAwbSeek.getIntValue();
-
+            CameraController.set3AMode(CameraController.Capture3AMode.Manual);
             Log.d(TAG, "save_3a_parameter: " + p);
             finish();
         });
