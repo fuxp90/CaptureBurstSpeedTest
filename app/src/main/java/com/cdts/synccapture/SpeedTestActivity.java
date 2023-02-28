@@ -26,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.cdts.beans.Command;
+import com.cdts.beans.ParamBean;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -314,6 +315,48 @@ public class SpeedTestActivity extends BaseActivity {
                 Intent intent = new Intent(getApplicationContext(), TimeSyncActivity.class);
                 startActivityForResult(intent, TIME_SYNC_REQ_CODE);
                 break;
+            case Command.start_capture:
+                mCameraController.startCaptureBurst(mCaptureMode);
+                break;
+            case Command.stop_capture:
+                mCameraController.stopCaptureBurst();
+                break;
+
+            case Command.set_param:
+                ParamBean paramBean = command.getParamBean();
+                mCameraController.setSize(Utils.parseParam(paramBean));
+                mCameraController.setRequestRate(paramBean.getFrameRate());
+                mCameraController.setImageFormat(Utils.parseFmt(paramBean));
+                Utils.putSpf(Utils.KEY_DEVICE_NAME, paramBean.getNameOfUpcoming());
+                mStorage.setSaveType(Utils.parseSaveType(paramBean));
+                mCaptureMode = Utils.parseCaptureMode(paramBean);
+                CameraController.set3AMode(paramBean.isAuto3a() ? CameraController.Capture3AMode.Auto : CameraController.Capture3AMode.Manual);
+                CameraController.ManualParameter parameter = CameraController.ManualParameter.getManualParameter();
+                parameter.mExposureTime = paramBean.getExposure();
+                parameter.mSensitivity = paramBean.getIso();
+                parameter.mFocusDistance = paramBean.getFocusDistance();
+                parameter.mAwbAdjust = paramBean.getWhiteBalanceOffset();
+                if (paramBean.isClearLocalCache()) {
+                    new Thread(() -> {
+                        deleteFile(getCacheDir());
+                    }).start();
+
+                }
+                break;
+        }
+    }
+
+    void deleteFile(File file) {
+        if (file.isFile()) {
+            boolean b = file.delete();
+            Log.d(TAG, "Delete : " + file.getAbsolutePath() + " " + b);
+        } else {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    deleteFile(f);
+                }
+            }
         }
     }
 

@@ -16,7 +16,17 @@ public class ParamBean implements Serializable {
     private int mSaveType = 0; /*FLASH-0, RAM-1*/
     private boolean isAuto3a;
     private String mImageSize = "4000*3000";
+    // CaptureOneByOne(true), CaptureBurst(false), CaptureRepeating(false), CaptureFixRate(true), CaptureMultiThread(true), CaptureOnAhead(true);
+    private int mCaptureMode = 3;/*0-5*/
 
+
+    public void setCaptureMode(int captureMode) {
+        mCaptureMode = captureMode;
+    }
+
+    public int getCaptureMode() {
+        return mCaptureMode;
+    }
 
     public boolean isClearLocalCache() {
         return mClearLocalCache;
@@ -122,18 +132,18 @@ public class ParamBean implements Serializable {
     @Override
     public String toString() {
         return "ParamBean{" +
-                "mClearLocalCache=" + mClearLocalCache +
-                ", mExposure=" + mExposure +
-                ", mIso=" + mIso +
-                ", mFocusDistance=" + mFocusDistance +
-                ", mFrameRate=" + mFrameRate +
-                ", mImageFormat=" + mImageFormat +
-                ", mWhiteBalanceOffset=" + mWhiteBalanceOffset +
-                ", mForceAutoWhiteBalanceCheck=" + mForceAutoWhiteBalanceCheck +
-                ", mNameOfUpcoming='" + mNameOfUpcoming + '\'' +
-                ", mSaveType=" + mSaveType +
-                ", isAuto3a=" + isAuto3a +
-                ", mImageSize='" + mImageSize + '\'' +
-                '}';
+            "mClearLocalCache=" + mClearLocalCache +
+            ", mExposure=" + mExposure +
+            ", mIso=" + mIso +
+            ", mFocusDistance=" + mFocusDistance +
+            ", mFrameRate=" + mFrameRate +
+            ", mImageFormat=" + mImageFormat +
+            ", mWhiteBalanceOffset=" + mWhiteBalanceOffset +
+            ", mForceAutoWhiteBalanceCheck=" + mForceAutoWhiteBalanceCheck +
+            ", mNameOfUpcoming='" + mNameOfUpcoming + '\'' +
+            ", mSaveType=" + mSaveType +
+            ", isAuto3a=" + isAuto3a +
+            ", mImageSize='" + mImageSize + '\'' +
+            '}';
     }
 }

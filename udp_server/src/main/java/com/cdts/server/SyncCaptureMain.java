@@ -74,7 +74,7 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         }
 
 
-        String[] labelText = {"NameOfUpcoming:", "ImageSize:", "FrameRate:", "ImageFormat:", "SaveType:",
+        String[] labelText = {"NameOfUpcoming:", "ImageSize:", "FrameRate:", "CaptureMode:", "ImageFormat:", "SaveType:",
                 "3AMode:", "ISO:", "Exposure(NS):", "ForceDistance:", "AWB offset:", "ClearImageCache:"};
 
         JLabel[] label = new JLabel[labelText.length];
@@ -86,21 +86,22 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
             add(label[i]);
 
         }
-
-        mNameOfUpcomingInput.setBounds(label[0].getX() + label[0].getWidth(), label[0].getY(), BTN_WIDTH, BTN_HEIGHT);
+        int index = 0;
+        mNameOfUpcomingInput.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         add(mNameOfUpcomingInput);
 
-        mImageSizeInput.setBounds(label[1].getX() + label[1].getWidth(), label[1].getY(), BTN_WIDTH, BTN_HEIGHT);
+        index++;
+        mImageSizeInput.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         add(mImageSizeInput);
 
-
+        index++;
         int defaultFps = 8;
         mParamBean.setFrameRate(defaultFps);
         JSlider rateInput = new JSlider();
         rateInput.setMinimum(1);
         rateInput.setMaximum(30);
         rateInput.setValue(defaultFps);
-        rateInput.setBounds(label[2].getX() + label[2].getWidth(), label[2].getY(), BTN_WIDTH, BTN_HEIGHT);
+        rateInput.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         JLabel rateValue = new JLabel("fps:" + defaultFps);
         rateValue.setBounds(rateInput.getX() + rateInput.getWidth(), rateInput.getY(), BTN_WIDTH, BTN_HEIGHT);
         rateInput.addChangeListener(e -> {
@@ -110,19 +111,41 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         add(rateValue);
         add(rateInput);
 
+        index++;
+        List<String> mode = new ArrayList<>();
+        mode.add("OneByOne");
+        mode.add("Burst");
+        mode.add("Repeating");
+        mode.add("FixRate");
+        mode.add("FixMultiThread");
+        mode.add("FixOnAhead");
+        JComboBox<String> captureMode = new JComboBox<String>();
+        for (String s : mode) {
+            captureMode.addItem(s);
+        }
+        captureMode.setSelectedIndex(3);
+        mParamBean.setCaptureMode(3);
+        captureMode.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
+        captureMode.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                System.out.println(e.getItem());
+                mParamBean.setCaptureMode(mode.indexOf(e.getItem()));
+            }
+        });
+        add(captureMode);
 
+        index++;
         List<String> fmt = new ArrayList<>();
         fmt.add("JPEG");
         fmt.add("RAW10");
         fmt.add("RAW_SENOR");
         fmt.add("YUV_420_888");
-
         JComboBox imageFmt = new JComboBox();
         for (String s : fmt) {
             imageFmt.addItem(s);
         }
         mParamBean.setImageFormat(0);
-        imageFmt.setBounds(label[3].getX() + label[3].getWidth(), label[3].getY(), BTN_WIDTH, BTN_HEIGHT);
+        imageFmt.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         imageFmt.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 System.out.println(e.getItem());
@@ -131,29 +154,26 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         });
         add(imageFmt);
 
-
+        index++;
         JComboBox saveType = new JComboBox();
         saveType.addItem("FLASH");
         saveType.addItem("RAM");
         mParamBean.setSaveType(0);
-        saveType.setBounds(label[4].getX() + label[4].getWidth(), label[4].getY(), BTN_WIDTH, BTN_HEIGHT);
-        saveType.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    System.out.println(e.getItem());
-                    mParamBean.setSaveType("FLASH".equals(e.getItem()) ? 0 : 1);
-                }
+        saveType.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
+        saveType.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                System.out.println(e.getItem());
+                mParamBean.setSaveType("FLASH".equals(e.getItem()) ? 0 : 1);
             }
         });
         add(saveType);
 
-
+        index++;
         JComboBox mode3a = new JComboBox();
         mode3a.addItem("Auto");
         mode3a.addItem("Manual");
         mParamBean.setAuto3A(true);
-        mode3a.setBounds(label[5].getX() + label[5].getWidth(), label[5].getY(), BTN_WIDTH, BTN_HEIGHT);
+        mode3a.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         mode3a.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 System.out.println(e.getItem());
@@ -162,21 +182,21 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         });
         add(mode3a);
 
-
+        index++;
         String[] def3aValue = {"444", "10000000", "0"};
         for (int i = 0; i < mMode3aText.length; i++) {
             mMode3aText[i] = new JTextField(def3aValue[i]);
-            mMode3aText[i].setBounds(label[6 + i].getX() + label[6 + i].getWidth(), label[6 + i].getY(), BTN_WIDTH, BTN_HEIGHT);
+            mMode3aText[i].setBounds(label[index + i].getX() + label[index + i].getWidth(), label[index + i].getY(), BTN_WIDTH, BTN_HEIGHT);
             add(mMode3aText[i]);
         }
 
-
+        index += def3aValue.length;
         int defaultAwb = 0;
         JSlider mAwbInput = new JSlider();
         mAwbInput.setMinimum(-50);
         mAwbInput.setMaximum(50);
         mAwbInput.setValue(defaultAwb);
-        mAwbInput.setBounds(label[9].getX() + label[9].getWidth(), label[9].getY(), BTN_WIDTH, BTN_HEIGHT);
+        mAwbInput.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         JLabel awbValue = new JLabel("offset:" + defaultAwb);
         awbValue.setBounds(mAwbInput.getX() + mAwbInput.getWidth(), mAwbInput.getY(), BTN_WIDTH, BTN_HEIGHT);
         mAwbInput.addChangeListener(e -> {
@@ -186,9 +206,9 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         add(awbValue);
         add(mAwbInput);
 
-
+        index++;
         mClearImageCache.setSelected(true);
-        mClearImageCache.setBounds(label[10].getX() + label[10].getWidth(), label[10].getY(), BTN_WIDTH, BTN_HEIGHT);
+        mClearImageCache.setBounds(label[index].getX() + label[index].getWidth(), label[index].getY(), BTN_WIDTH, BTN_HEIGHT);
         add(mClearImageCache);
 
 

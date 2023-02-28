@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.text.TextUtils;
+import android.util.Size;
+
+import com.cdts.beans.ParamBean;
 
 public class Utils {
 
@@ -55,4 +58,42 @@ public class Utils {
 
     }
 
+    public static Size parseParam(ParamBean bean) {
+        try {
+            String[] arr = bean.getImageSize().split("*");
+            int w = Integer.parseInt(arr[0].trim());
+            int h = Integer.parseInt(arr[1].trim());
+            return new Size(w, h);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            return new Size(4000, 300);
+        }
+    }
+
+    public static CameraController.Fmt parseFmt(ParamBean paramBean) {
+        switch (paramBean.getImageFormat()) {
+            case 0:
+                return CameraController.Fmt.JPEG;
+            case 1:
+                return CameraController.Fmt.RAW10;
+            case 2:
+                return CameraController.Fmt.RAW_SENSOR;
+            case 3:
+                return CameraController.Fmt.YUV;
+        }
+        return CameraController.Fmt.JPEG;
+    }
+
+    public static Storage.SaveType parseSaveType(ParamBean paramBean) {
+        return paramBean.getSaveType() == 0 ? Storage.SaveType.Flash : Storage.SaveType.RAM;
+    }
+
+    public static CameraController.CaptureMode parseCaptureMode(ParamBean paramBean) {
+        for (CameraController.CaptureMode captureMode : CameraController.CaptureMode.values()) {
+            if (captureMode.ordinal() == paramBean.getCaptureMode()) {
+                return captureMode;
+            }
+        }
+        return CameraController.CaptureMode.CaptureFixRate;
+    }
 }

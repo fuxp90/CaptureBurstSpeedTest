@@ -58,11 +58,11 @@ public class CameraController {
     private boolean isTestRunning;
     private static final String TAG = "CameraController";
     private ImageReader mImageReader;
-    private Fmt mCaptureFormat = Fmt.RAW10;
+    private static Fmt mCaptureFormat = Fmt.RAW10;
 
     private static final boolean NeedCheckAFState = false;
     private Status mStatus = Status.Closed;
-    private Size mSize;
+    private static Size mSize;
     private static final int MaxImagesBuffer = 50;
     private static final int CAPTURE_FPS = 8;
     private int mJpegQuality = 95;
@@ -80,7 +80,7 @@ public class CameraController {
 
     private int mAfState = CaptureResult.CONTROL_AF_STATE_INACTIVE;
     private Surface mPreviewSurface;
-    private int mRequestRate = CAPTURE_FPS;
+    private static int mRequestRate = CAPTURE_FPS;
 
     public void setPreviewSurface(Surface surface) {
         mPreviewSurface = surface;
