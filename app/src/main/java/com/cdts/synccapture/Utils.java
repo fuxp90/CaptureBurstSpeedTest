@@ -2,7 +2,6 @@ package com.cdts.synccapture;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.text.TextUtils;
 import android.util.Size;
 
@@ -10,9 +9,9 @@ import com.cdts.beans.ParamBean;
 
 public class Utils {
 
-    public static final String KEY_DEVICE_NAME = "key_device_name";
-
-    public static final String DEF_DEVICE_NAME = Build.BRAND + "_" + Build.MODEL + "_" + Build.BOARD;
+    public static final String KEY_RECORD_NAME = "key_record_name";
+    public static final String DEF_RECORD_NAME = "Record1";
+    private static final String SPLIT = "*";
 
     public static <E extends Enum<E>> String[] toStringArray(Enum<E>[] es) {
         String[] arr = new String[es.length];
@@ -60,7 +59,7 @@ public class Utils {
 
     public static Size parseParam(ParamBean bean) {
         try {
-            String[] arr = bean.getImageSize().split("*");
+            String[] arr = bean.getImageSize().split(SPLIT);
             int w = Integer.parseInt(arr[0].trim());
             int h = Integer.parseInt(arr[1].trim());
             return new Size(w, h);

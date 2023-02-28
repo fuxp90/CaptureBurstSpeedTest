@@ -23,7 +23,6 @@ public class BaseActivity extends AppCompatActivity implements UdpClient.OnComma
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: " + this);
-        UdpClient.getInstance(getApplicationContext()).start();
     }
 
     public void setActionBarTitle(int title) {

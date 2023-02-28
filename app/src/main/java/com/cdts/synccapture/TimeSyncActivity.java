@@ -100,6 +100,9 @@ public class TimeSyncActivity extends BaseActivity {
             ActivityCompat.requestPermissions(this, PERMISSION, 0xff);
         }
 
+        if (getIntent().getBooleanExtra("auto_recording", false)) {
+            mStartStopBtn.callOnClick();
+        }
     }
 
     @Override
@@ -107,6 +110,9 @@ public class TimeSyncActivity extends BaseActivity {
         switch (command.getCmd()) {
             case Command.audio_sync_stop:
                 findViewById(R.id.time_sync_finish).callOnClick();
+                break;
+            case Command.audio_sync_start:
+                mStartStopBtn.callOnClick();
                 break;
         }
     }

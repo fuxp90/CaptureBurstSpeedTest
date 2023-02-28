@@ -313,13 +313,12 @@ public class SpeedTestActivity extends BaseActivity {
         switch (command.getCmd()) {
             case Command.audio_sync_start:
                 Intent intent = new Intent(getApplicationContext(), TimeSyncActivity.class);
+                intent.putExtra("auto_recording", true);
                 startActivityForResult(intent, TIME_SYNC_REQ_CODE);
                 break;
             case Command.start_capture:
-                mCameraController.startCaptureBurst(mCaptureMode);
-                break;
             case Command.stop_capture:
-                mCameraController.stopCaptureBurst();
+                mButton.callOnClick();
                 break;
 
             case Command.set_param:
@@ -327,7 +326,7 @@ public class SpeedTestActivity extends BaseActivity {
                 mCameraController.setSize(Utils.parseParam(paramBean));
                 mCameraController.setRequestRate(paramBean.getFrameRate());
                 mCameraController.setImageFormat(Utils.parseFmt(paramBean));
-                Utils.putSpf(Utils.KEY_DEVICE_NAME, paramBean.getNameOfUpcoming());
+                Utils.putSpf(Utils.KEY_RECORD_NAME, paramBean.getNameOfUpcoming());
                 mStorage.setSaveType(Utils.parseSaveType(paramBean));
                 mCaptureMode = Utils.parseCaptureMode(paramBean);
                 CameraController.set3AMode(paramBean.isAuto3a() ? CameraController.Capture3AMode.Auto : CameraController.Capture3AMode.Manual);
@@ -473,7 +472,7 @@ public class SpeedTestActivity extends BaseActivity {
             mManualCurrent.setText(parameter.getCurrentDesc());
         }
         mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
-        mDeviceName.setText(getString(R.string.device_name, Utils.getSpf(Utils.KEY_DEVICE_NAME, Utils.DEF_DEVICE_NAME)));
+        mDeviceName.setText(getString(R.string.device_name, Utils.getSpf(Utils.KEY_RECORD_NAME, Utils.DEF_RECORD_NAME)));
     }
 
     @Override
@@ -547,7 +546,7 @@ public class SpeedTestActivity extends BaseActivity {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(R.string.set_device_name);
                 EditText editText = new EditText(this);
-                editText.setText(Utils.getSpf(Utils.KEY_DEVICE_NAME, Utils.DEF_DEVICE_NAME));
+                editText.setText(Utils.getSpf(Utils.KEY_RECORD_NAME, Utils.DEF_RECORD_NAME));
                 builder.setView(editText);
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
@@ -559,7 +558,7 @@ public class SpeedTestActivity extends BaseActivity {
                     public void onClick(DialogInterface dialog, int which) {
                         String name = editText.getText().toString();
                         if (!TextUtils.isEmpty(name)) {
-                            Utils.putSpf(Utils.KEY_DEVICE_NAME, name);
+                            Utils.putSpf(Utils.KEY_RECORD_NAME, name);
                             mDeviceName.setText(getString(R.string.device_name, name));
                         }
                     }

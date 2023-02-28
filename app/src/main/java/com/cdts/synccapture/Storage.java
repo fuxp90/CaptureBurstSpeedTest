@@ -3,6 +3,7 @@ package com.cdts.synccapture;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.media.Image;
+import android.os.Build;
 import android.util.Log;
 
 import java.io.File;
@@ -18,7 +19,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 public class Storage implements CameraController.OnFmtChangedListener {
 
@@ -29,6 +29,12 @@ public class Storage implements CameraController.OnFmtChangedListener {
     private final static Storage sStorage = new Storage();
 
     private SaveType mSaveType = SaveType.RAM;
+    //saves frames with devicename_recordingname_size_frameNumber_frametime.xxx
+    private static final String ImageNamePattern = Build.MODEL.replaceAll(" ", "") + "_%s_[%dx%d][row_stride=%d]_%s_%s.%s";
+
+    private static int WIDTH;
+    private static int HEIGHT;
+    private static int ROW_STRIDE;
 
     public SaveType getSaveType() {
         return mSaveType;
@@ -41,6 +47,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
     public enum SaveType {
         RAM, Flash;
     }
+
 
     public void setSaveType(SaveType saveType) {
         mSaveType = saveType;
@@ -107,6 +114,11 @@ public class Storage implements CameraController.OnFmtChangedListener {
         boolean saveToFlash = mSaveType == SaveType.Flash;
         Image.Plane plane = image.getPlanes()[0];
         ByteBuffer buffer = plane.getBuffer();
+        int rowStride = plane.getRowStride();
+        WIDTH = image.getWidth();
+        HEIGHT = image.getHeight();
+        ROW_STRIDE = rowStride;
+        Log.d(TAG, "rowStride: " + rowStride);
         long timestamp = baseTime <= 0 ? 0 : image.getTimestamp() - baseTime;
         if (saveToFlash) {
             int plans = image.getFormat() == ImageFormat.YUV_420_888 ? 2 : 1;
@@ -182,9 +194,13 @@ public class Storage implements CameraController.OnFmtChangedListener {
         public void run() {
             int a = num.incrementAndGet();
             boolean successful = false;
-            String name = mDir.getName();
-            File file = new File(mDir, "image_" + a + "_" + +timestamp + "." + name.toLowerCase(Locale.ROOT));
-            Log.d(TAG, "save E, num:" + a);
+            String post = mDir.getName().toLowerCase(Locale.ROOT);
+            //Pixel4_Record1_[4032x3024][row_stride=0]_5_0.jpeg
+            String recordName = Utils.getSpf(Utils.KEY_RECORD_NAME, Utils.DEF_RECORD_NAME);
+            String name = String.format(Locale.US, ImageNamePattern, recordName, WIDTH, HEIGHT, ROW_STRIDE,
+                a, timestamp, post);
+            File file = new File(mDir, name);
+            Log.d(TAG, "save E, name:" + name);
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(file);
                 if (data != null) {
