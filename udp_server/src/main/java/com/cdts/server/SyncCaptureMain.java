@@ -255,10 +255,13 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
                 break;
 
             case REFRESH_DEVICE_LIST:
-                mDeviceBeans = AdbScripts.getDevice();
+                List<String> list = AdbScripts.getDevices();
+                appendLog(list);
+                mDeviceBeans = AdbScripts.parseDeviceBean(list);
                 if (checkDeviceList("Device not found!")) {
-                    for (DeviceBean d : mDeviceBeans) {
-                        appendLog(d.toString());
+                    for (int i = 0; i < mDeviceBeans.size(); i++) {
+                        DeviceBean d = mDeviceBeans.get(i);
+                        appendLog("device:[" + i + "]" + d.toString());
                     }
                 }
                 break;

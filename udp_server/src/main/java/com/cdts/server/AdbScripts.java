@@ -17,8 +17,7 @@ public class AdbScripts {
 
     public final static String ADB_PULL_IMAGES = "adb -s %s pull /sdcard/Android/data/com.cdts.synccapture/cache %s";
 
-    public static List<DeviceBean> getDevice() {
-        List<String> list = AShell.exec(ADB_DEVICES);
+    public static List<DeviceBean> parseDeviceBean(List<String> list) {
         List<DeviceBean> deviceBeans = new ArrayList<>();
         if (list != null && list.size() > 1) {
             for (int i = 2; i < list.size(); i++) {
@@ -30,6 +29,10 @@ public class AdbScripts {
             }
         }
         return deviceBeans;
+    }
+
+    public static List<String> getDevices() {
+        return AShell.exec(ADB_DEVICES);
     }
 
     public static List<String> installApk(DeviceBean bean, String apk) {
