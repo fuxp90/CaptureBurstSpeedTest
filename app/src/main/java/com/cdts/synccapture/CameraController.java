@@ -698,7 +698,7 @@ public class CameraController {
     }
 
     public void setSize(Size size) {
-        if (mSize != null && !mSize.equals(size)) {
+        if (mSize != null && !mSize.equals(size) && getImageSupportSize().contains(size)) {
             mSize = size;
             Log.d(TAG, "setSize: " + mSize);
             config();
@@ -765,6 +765,10 @@ public class CameraController {
             try {
                 if (mImageReader != null) {
                     mImageReader.close();
+                }
+                if (mSize == null) {
+                    mSize = getImageSupportSize().get(0);
+                    Log.d(TAG, "config: " + mSize);
                 }
                 mImageReader = ImageReader.newInstance(mSize.getWidth(), mSize.getHeight(), mCaptureFormat.mFmt, MaxImagesBuffer);
                 mImageReader.setOnImageAvailableListener(this::onImageReceived, mHandler);

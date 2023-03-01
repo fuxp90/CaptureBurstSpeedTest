@@ -60,10 +60,12 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
         mButtonList.add(new JButton(ChooseApk));
         mButtonList.add(new JButton(InstallApk));
         mButtonList.add(new JButton(AudioSyncStart));
+        mButtonList.add(new JButton(AudioSyncStop));
         mButtonList.add(new JButton(REFRESH_DEVICE_LIST));
         mButtonList.add(new JButton(LAUNCH_APP));
         mButtonList.add(new JButton(SET_PARAM));
         mButtonList.add(new JButton(START_CAPTURE));
+        mButtonList.add(new JButton(STOP_CAPTURE));
         mButtonList.add(new JButton(PULL_IMAGES));
 
         for (int i = 0; i < mButtonList.size(); i++) {
@@ -268,10 +270,10 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
                 }
                 break;
             case AudioSyncStart:
+                mUdpServer.sendCmd(Command.AUDIO_SYNC_START, 1);
+                break;
             case AudioSyncStop:
-                JButton button = (JButton) e.getSource();
-                button.setText(command.equals(AudioSyncStart) ? AudioSyncStop : AudioSyncStart);
-                mUdpServer.sendCmd(command.equals(AudioSyncStart) ? Command.AUDIO_SYNC_START : Command.AUDIO_SYNC_STOP, 1);
+                mUdpServer.sendCmd(Command.AUDIO_SYNC_STOP, 1);
                 break;
 
             case REFRESH_DEVICE_LIST:
@@ -328,10 +330,10 @@ public class SyncCaptureMain extends JFrame implements ActionListener {
                 break;
 
             case START_CAPTURE:
+                mUdpServer.sendCmd(Command.CAPTURE_START, 1);
+                break;
             case STOP_CAPTURE:
-                JButton btn = (JButton) e.getSource();
-                btn.setText(command.equals(START_CAPTURE) ? STOP_CAPTURE : START_CAPTURE);
-                mUdpServer.sendCmd(command.equals(START_CAPTURE) ? Command.CAPTURE_START : Command.CAPTURE_STOP, 1);
+                mUdpServer.sendCmd(Command.CAPTURE_STOP, 1);
                 break;
             case PULL_IMAGES:
                 if (checkDeviceList("Device not found!")) {

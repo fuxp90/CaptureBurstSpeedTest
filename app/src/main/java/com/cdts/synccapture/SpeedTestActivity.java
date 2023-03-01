@@ -317,8 +317,16 @@ public class SpeedTestActivity extends BaseActivity {
                 startActivityForResult(intent, TIME_SYNC_REQ_CODE);
                 break;
             case Command.start_capture:
+                if (!mCameraController.isTestRunning()) {
+                    mButton.setText(R.string.test_stop);
+                    mCameraController.startCaptureBurst(mCaptureMode);
+                }
+                break;
             case Command.stop_capture:
-                mButton.callOnClick();
+                if (mCameraController.isTestRunning()) {
+                    mButton.setText(R.string.test_start);
+                    mCameraController.stopCaptureBurst();
+                }
                 break;
 
             case Command.set_param:
@@ -335,11 +343,11 @@ public class SpeedTestActivity extends BaseActivity {
                 parameter.mSensitivity = paramBean.getIso();
                 parameter.mFocusDistance = paramBean.getFocusDistance();
                 parameter.mAwbAdjust = paramBean.getWhiteBalanceOffset();
+                resetView();
                 if (paramBean.isClearLocalCache()) {
                     new Thread(() -> {
                         deleteFile(getCacheDir());
                     }).start();
-
                 }
                 break;
         }
