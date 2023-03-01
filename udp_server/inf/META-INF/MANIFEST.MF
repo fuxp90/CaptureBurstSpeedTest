@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
 Main-Class: com.cdts.server.Main
-Class-Path: flatlaf-3.0.jar
+Class-Path: gson-2.10.1.jar flatlaf-3.0.jar
 

@@ -1,5 +1,8 @@
 package com.cdts.beans;
 
+import com.formdev.flatlaf.json.Json;
+import com.google.gson.Gson;
+
 import java.io.*;
 
 public class Command implements Serializable {
@@ -34,7 +37,7 @@ public class Command implements Serializable {
 
     @Override
     public String toString() {
-        return "Command{" + "Cmd=" + getCmd(mCmd) + "(" + mCmd + ")" + (mParamBean == null ? "" : mParamBean) + '}';
+        return new Gson().toJson(this);
     }
 
     String getCmd(int cmd) {
@@ -54,7 +57,7 @@ public class Command implements Serializable {
         }
     }
 
-    public byte[] getBytes() {
+    public byte[] getObjectBytes() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try {
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
@@ -65,5 +68,9 @@ public class Command implements Serializable {
             throw new RuntimeException(e);
         }
         return byteArrayOutputStream.toByteArray();
+    }
+
+    public byte[] getJsonByte() {
+        return new Gson().toJson(this).getBytes();
     }
 }

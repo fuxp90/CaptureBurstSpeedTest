@@ -47,7 +47,7 @@ public class UdpServer implements Runnable {
                 mConditionVariable.block();
                 if (mCommand != null) {
                     System.out.println("sendBroadcast E [" + mSendCount + "] " + mCommand);
-                    sendBroadcast(socket, mCommand.getBytes());
+                    sendBroadcast(socket, mCommand.getJsonByte());
                     System.out.println("sendBroadcast X");
                     if (mOnCommandSendListener != null) {
                         SwingUtilities.invokeLater(() -> mOnCommandSendListener.onCommandSend(mCommand));

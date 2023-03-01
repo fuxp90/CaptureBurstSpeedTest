@@ -12,6 +12,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.cdts.beans.Command;
+import com.google.gson.Gson;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -47,7 +48,7 @@ public class UdpClient implements Runnable {
 
     public void setListener(OnCommandReceivedListener listener) {
         mListener = listener;
-        Log.d(TAG, "setListener: " + mListener);
+        Log.d(TAG, "setListener: " + mListener + " " + this + " " + isActive);
     }
 
     public void start() {
@@ -78,9 +79,13 @@ public class UdpClient implements Runnable {
             super.handleMessage(msg);
             if (msg.what == 1 && mListener != null) {
                 mListener.onCommandReceived((Command) msg.obj);
+            } else {
+                Log.e(TAG, this + " mListener: " + mListener + " what:" + msg.what);
             }
         }
     };
+
+    public static final boolean isGson = true;
 
     @Override
     public void run() {
@@ -101,13 +106,25 @@ public class UdpClient implements Runnable {
                 DatagramPacket packet = new DatagramPacket(mBuffer, mBuffer.length);
                 socket.receive(packet);
                 InetAddress address = packet.getAddress();
-                ObjectInputStream objectInputStream = new ObjectInputStream(new BufferedInputStream(new ByteArrayInputStream(packet.getData(), 0, packet.getLength())));
-                Object object = objectInputStream.readObject();
-                Log.d(TAG, address.toString() + " receive run: " + object);
-                objectInputStream.close();
-                if (object instanceof Command) {
-                    mHandler.obtainMessage(1, object).sendToTarget();
+
+                if (isGson) {
+                    String msg = new String(packet.getData(), 0, packet.getLength());
+                    Log.d(TAG, address.toString() + " receive run: " + msg);
+                    Gson gson = new Gson();
+                    Command command = gson.fromJson(msg, Command.class);
+                    mHandler.obtainMessage(1, command).sendToTarget();
+                } else {
+
+                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(packet.getData(), 0, packet.getLength());
+                    ObjectInputStream objectInputStream = new ObjectInputStream(new BufferedInputStream(byteArrayInputStream));
+                    Object object = objectInputStream.readObject();
+                    Log.d(TAG, address.toString() + " receive run: " + object);
+                    objectInputStream.close();
+                    if (object instanceof Command) {
+                        mHandler.obtainMessage(1, object).sendToTarget();
+                    }
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
