@@ -8,5 +8,6 @@ public class SyncApplication extends Application {
     public void onCreate() {
         super.onCreate();
         UdpClient.getInstance(getApplicationContext()).start();
+        SmbClient.init();
     }
 }

@@ -437,15 +437,22 @@ public class SpeedTestActivity extends BaseActivity {
                 runOnUiThread(() -> mTestSend.setText(getString(R.string.test_sendRequest, num)));
             }
         });
-        mStorage.setOnImageSaveCompleteListener((file, a, successful) -> {
-            runOnUiThread(() -> mTestSaveNum.setText(getString(R.string.test_StorageImage, mStorage.getSaveType(), a)));
-        });
+        mStorage.addOnImageSaveCompleteListener(mOnImageSaveCompleteListener);
         mStorage.setImageSaveDirCreateListener(file -> runOnUiThread(() -> {
             mTestStoragePath.setText(getString(R.string.test_StoragePath, file.getAbsolutePath()));
         }));
 
         resetView();
     }
+
+    Storage.OnImageSaveCompleteListener mOnImageSaveCompleteListener = new Storage.OnImageSaveCompleteListener() {
+        @Override
+        public void onSaveComplete(File file, int num, boolean successful) {
+            SpeedTestActivity.this.runOnUiThread(() -> mTestSaveNum.setText(
+                SpeedTestActivity.this.getString(R.string.test_StorageImage, mStorage.getSaveType(), num)));
+
+        }
+    };
 
     @SuppressLint("SetTextI18n")
     private void resetView() {
@@ -490,6 +497,8 @@ public class SpeedTestActivity extends BaseActivity {
             mCameraController.stopCaptureBurst();
             mCameraController.closeCamera();
         }
+        mStorage.setImageSaveDirCreateListener(null);
+        mStorage.removeOnImageSaveCompleteListener(mOnImageSaveCompleteListener);
     }
 
     @Override

@@ -104,10 +104,14 @@ public class Storage implements CameraController.OnFmtChangedListener {
     }
 
     private final AtomicInteger mSavedImageNum = new AtomicInteger();
-    private OnImageSaveCompleteListener mOnImageSaveCompleteListener;
+    private final List<OnImageSaveCompleteListener> mOnImageSaveCompleteListener = new LinkedList<>();
 
-    public void setOnImageSaveCompleteListener(OnImageSaveCompleteListener onImageSaveCompleteListener) {
-        mOnImageSaveCompleteListener = onImageSaveCompleteListener;
+    public void addOnImageSaveCompleteListener(OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        mOnImageSaveCompleteListener.add(onImageSaveCompleteListener);
+    }
+
+    public void removeOnImageSaveCompleteListener(OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        mOnImageSaveCompleteListener.remove(onImageSaveCompleteListener);
     }
 
     public void saveImageBuffer(Image image, long baseTime) {
@@ -130,8 +134,8 @@ public class Storage implements CameraController.OnFmtChangedListener {
         } else {
             mImageBuffer.add(buffer);
             int a = mSavedImageNum.incrementAndGet();
-            if (mOnImageSaveCompleteListener != null) {
-                mOnImageSaveCompleteListener.onSaveComplete(null, a, true);
+            for (OnImageSaveCompleteListener l : mOnImageSaveCompleteListener) {
+                l.onSaveComplete(null, a, true);
             }
         }
     }
@@ -171,10 +175,10 @@ public class Storage implements CameraController.OnFmtChangedListener {
         private final long timestamp;
         private final File mDir;
         private ByteBuffer[] buffer;
-        private final OnImageSaveCompleteListener mOnImageSaveCompleteListener;
+        private final List<OnImageSaveCompleteListener> mOnImageSaveCompleteListener;
 
 
-        public SaveTask(byte[] data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        public SaveTask(byte[] data, AtomicInteger num, File file, long timestamp, List<OnImageSaveCompleteListener> onImageSaveCompleteListener) {
             this.data = data;
             this.num = num;
             this.timestamp = timestamp;
@@ -182,7 +186,7 @@ public class Storage implements CameraController.OnFmtChangedListener {
             mOnImageSaveCompleteListener = onImageSaveCompleteListener;
         }
 
-        public SaveTask(ByteBuffer[] data, AtomicInteger num, File file, long timestamp, OnImageSaveCompleteListener onImageSaveCompleteListener) {
+        public SaveTask(ByteBuffer[] data, AtomicInteger num, File file, long timestamp, List<OnImageSaveCompleteListener> onImageSaveCompleteListener) {
             this.buffer = data;
             this.num = num;
             this.timestamp = timestamp;
@@ -222,7 +226,9 @@ public class Storage implements CameraController.OnFmtChangedListener {
             }
 
             if (mOnImageSaveCompleteListener != null) {
-                mOnImageSaveCompleteListener.onSaveComplete(file, a, successful);
+                for (OnImageSaveCompleteListener l : mOnImageSaveCompleteListener) {
+                    l.onSaveComplete(file, a, successful);
+                }
             }
         }
 

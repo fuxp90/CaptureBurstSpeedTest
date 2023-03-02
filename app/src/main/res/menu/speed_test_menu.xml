@@ -12,6 +12,10 @@
         android:title="@string/set_device_name" />
 
     <item
+        android:id="@+id/set_smb_config"
+        android:title="@string/set_smb_config" />
+
+    <item
         android:id="@+id/about"
         android:title="@string/app_about" />
 </menu>
