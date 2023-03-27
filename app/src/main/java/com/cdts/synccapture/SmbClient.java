@@ -12,6 +12,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import me.jingbin.smb.BySMB;
 import me.jingbin.smb.OnOperationFileCallback;
@@ -28,6 +30,7 @@ public class SmbClient implements OnOperationFileCallback, Runnable {
     boolean isInitProperty;
     boolean isCheckingClient;
 
+    private final Executor mExecutor = Executors.newFixedThreadPool(5);
     public static final String KEY_SMB_USR_NAME = "key_smb_usr_name";
     public static final String KEY_SMB_PWD = "key_smb_pwd";
     public static final String KEY_SMB_IP = "key_smb_ip";
@@ -67,9 +70,9 @@ public class SmbClient implements OnOperationFileCallback, Runnable {
                 Log.d(TAG, "init smb name:" + name + " pwd:" + pwd + " ip:" + ip + " folder:" + folder);
                 if (ip != null) {
                     mBySMB = BySMB.with().setConfig(ip,// ip
-                            name,// 用户名
-                            pwd,// 密码
-                            folder// 共享文件夹名
+                        name,// 用户名
+                        pwd,// 密码
+                        folder// 共享文件夹名
                     ).setReadTimeOut(60).setSoTimeOut(180).build();
                     isClientRunning = true;
                     Log.d(TAG, "init smb successful");
@@ -92,10 +95,16 @@ public class SmbClient implements OnOperationFileCallback, Runnable {
     }
 
     public void upload(File file) {
-        if ( file == null) return;
+        if (file == null) return;
         if (isClientRunning && mBySMB != null) {
             Log.d(TAG, "upload: " + file.getAbsolutePath());
-            mHandler.post(() -> mBySMB.writeToFile(file, mSmbClient));
+            mExecutor.execute(() -> {
+                try {
+                    mBySMB.writeToFile(file, mSmbClient);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         } else {
             Log.d(TAG, "upload: " + file.getAbsolutePath() + " add to pending list");
             mPendingFiles.add(file);

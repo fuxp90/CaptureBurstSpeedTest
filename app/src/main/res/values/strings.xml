@@ -88,7 +88,7 @@
     <string name="test_fmt_jpeg_qu">JpegQuality:%d</string>
     <string name="test_fmt_jpeg_quality">JpegQuality</string>
     <string name="awb_title">AWB</string>
-    <string name="set_device_name">Set Device Name</string>
+    <string name="set_device_name">Set Record Name</string>
     <string name="device_name">RecordName:%s</string>
     <string name="set_smb_config">Set Smb config</string>
     <string name="smb_usr_name">User Name:</string>
@@ -96,4 +96,5 @@
     <string name="smb_server_id">Smb Server IP:</string>
     <string name="smb_server_port">Smb Server Port:</string>
     <string name="smb_server_folder">Smb folder:</string>
+    <string name="test_upload_smb">UploadSmb:%s</string>
 </resources>
