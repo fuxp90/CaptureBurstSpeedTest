@@ -45,6 +45,12 @@ android {
         }
     }
     ndkVersion '25.1.8937393'
+
+    configurations {
+        all {
+            exclude group: 'com.google.guava', module: 'listenablefuture'
+        }
+    }
 }
 
 static def getBuildDate() {

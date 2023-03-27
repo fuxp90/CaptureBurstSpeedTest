@@ -71,7 +71,6 @@ public class SpeedTestActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Utils.initSpf(this);
         setContentView(R.layout.activity_speed_test);
 
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -448,8 +447,10 @@ public class SpeedTestActivity extends BaseActivity {
     Storage.OnImageSaveCompleteListener mOnImageSaveCompleteListener = new Storage.OnImageSaveCompleteListener() {
         @Override
         public void onSaveComplete(File file, int num, boolean successful) {
-            SpeedTestActivity.this.runOnUiThread(() -> mTestSaveNum.setText(
-                SpeedTestActivity.this.getString(R.string.test_StorageImage, mStorage.getSaveType(), num)));
+            SpeedTestActivity.this.runOnUiThread(() -> mTestSaveNum.setText(SpeedTestActivity.this.getString(R.string.test_StorageImage, mStorage.getSaveType(), num)));
+
+
+            SmbClient.getSmbClient().upload(file);
 
         }
     };
@@ -578,6 +579,46 @@ public class SpeedTestActivity extends BaseActivity {
                             Utils.putSpf(Utils.KEY_RECORD_NAME, name);
                             mDeviceName.setText(getString(R.string.device_name, name));
                         }
+                    }
+                }).show();
+            }
+            break;
+            case R.id.set_smb_config: {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.set_smb_config);
+                final View view = View.inflate(this, R.layout.layout_smb, null);
+                builder.setView(view);
+
+                String smbIp = Utils.getSpf(SmbClient.KEY_SMB_IP, "");
+                String smbName = Utils.getSpf(SmbClient.KEY_SMB_USR_NAME, "");
+                String smbFolder = Utils.getSpf(SmbClient.KEY_SMB_FOLDER, "");
+                String smbPwd = Utils.getSpf(SmbClient.KEY_SMB_PWD, "");
+                Log.d(TAG, "getSmbConfig: name:" + smbName + ",pwd:" + smbPwd + ",ip:" + smbIp + ",folder:" + smbFolder);
+                ((EditText) view.findViewById(R.id.server_ip)).setText(smbIp);
+                ((EditText) view.findViewById(R.id.usr_name)).setText(smbName);
+                ((EditText) view.findViewById(R.id.usr_pwd)).setText(smbPwd);
+                ((EditText) view.findViewById(R.id.server_folder)).setText(smbFolder);
+
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String ip = ((EditText) view.findViewById(R.id.server_ip)).getText().toString().trim();
+                        String name = ((EditText) view.findViewById(R.id.usr_name)).getText().toString().trim();
+                        String pwd = ((EditText) view.findViewById(R.id.usr_pwd)).getText().toString().trim();
+                        String folder = ((EditText) view.findViewById(R.id.server_folder)).getText().toString().trim();
+
+                        Log.d(TAG, "setSmbConfig: name:" + name + ",pwd:" + pwd + ",ip:" + ip + ",folder:" + folder);
+                        Utils.putSpf(SmbClient.KEY_SMB_IP, ip);
+                        Utils.putSpf(SmbClient.KEY_SMB_USR_NAME, name);
+                        Utils.putSpf(SmbClient.KEY_SMB_FOLDER, folder);
+                        Utils.putSpf(SmbClient.KEY_SMB_PWD, pwd);
+
+                        dialog.dismiss();
                     }
                 }).show();
             }

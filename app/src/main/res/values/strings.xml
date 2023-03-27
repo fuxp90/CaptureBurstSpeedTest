@@ -91,4 +91,9 @@
     <string name="set_device_name">Set Device Name</string>
     <string name="device_name">RecordName:%s</string>
     <string name="set_smb_config">Set Smb config</string>
+    <string name="smb_usr_name">User Name:</string>
+    <string name="smb_usr_pwd">Password:</string>
+    <string name="smb_server_id">Smb Server IP:</string>
+    <string name="smb_server_port">Smb Server Port:</string>
+    <string name="smb_server_folder">Smb folder:</string>
 </resources>

@@ -7,7 +7,8 @@ public class SyncApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Utils.initSpf(this);
         UdpClient.getInstance(getApplicationContext()).start();
-        SmbClient.init();
+        SmbClient.getSmbClient().start();
     }
 }
