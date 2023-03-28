@@ -33,7 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.stream.Collectors;
 
-public class SpeedTestActivity extends BaseActivity {
+public class SpeedTestActivity extends BaseActivity implements SmbClient.OnUploadSmbListener {
 
     private CameraController mCameraController;
     private final String mCamId = "0";
@@ -57,7 +57,7 @@ public class SpeedTestActivity extends BaseActivity {
     private TextView mModeRateView;
     private TextView mTestJpegQuality;
     private TextView mDeviceName;
-
+    private TextView mSmbUploadCount;
     private final static String TAG = "BaseActivity";
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Storage mStorage = Storage.getStorage();
@@ -99,6 +99,8 @@ public class SpeedTestActivity extends BaseActivity {
         mTestJpegQuality = findViewById(R.id.test_fmt_param);
         mBaseTime = findViewById(R.id.test_base_time);
         mDeviceName = findViewById(R.id.device_name);
+        mSmbUploadCount = findViewById(R.id.upload_smb);
+
 
         findViewById(R.id.test_solution_select).setOnClickListener(v -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(SpeedTestActivity.this);
@@ -269,8 +271,15 @@ public class SpeedTestActivity extends BaseActivity {
         });
         setActionBarTitle(R.string.test_capture_speed);
 
+
+        SmbClient.getSmbClient().resetUploadCount();
+        SmbClient.getSmbClient().setListener(this);
     }
 
+    @Override
+    public void onUploadComplete(int count) {
+        runOnUiThread(() -> mSmbUploadCount.setText(getString(R.string.test_upload_smb, count)));
+    }
 
     boolean isStorageComplete() {
         if (mStorage.getSaveType() == Storage.SaveType.RAM) return true;
@@ -426,6 +435,10 @@ public class SpeedTestActivity extends BaseActivity {
             @Override
             public void onReceiveImage(int num, Image image) {
                 mStorage.saveImageBuffer(image, 0);
+
+                if (num == SmbClient.getSmbClient().getUploadCount()) {
+                    SmbClient.getSmbClient().resetUploadCount();
+                }
                 runOnUiThread(() -> {
                     mTestReceive.setText(getString(R.string.test_receivedImage, num));
                 });
@@ -489,6 +502,8 @@ public class SpeedTestActivity extends BaseActivity {
         }
         mBaseTime.setText(getString(R.string.base_time, mImageBaseTime));
         mDeviceName.setText(getString(R.string.device_name, Utils.getSpf(Utils.KEY_RECORD_NAME, Utils.DEF_RECORD_NAME)));
+
+        mSmbUploadCount.setText(getString(R.string.test_upload_smb, SmbClient.getSmbClient().getUploadCount()));
     }
 
     @Override

@@ -96,5 +96,5 @@
     <string name="smb_server_id">Smb Server IP:</string>
     <string name="smb_server_port">Smb Server Port:</string>
     <string name="smb_server_folder">Smb folder:</string>
-    <string name="test_upload_smb">UploadSmb:%s</string>
+    <string name="test_upload_smb">UploadSmb:%d</string>
 </resources>
